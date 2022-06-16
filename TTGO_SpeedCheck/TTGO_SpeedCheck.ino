@@ -10,7 +10,7 @@ struct SpeedMeasurement
     const bool config;
 };
 
-SpeedMeasurement speed = {34, 0L, 0L, 0, false, false, true};
+SpeedMeasurement speed = {34, 0L, 0L, 0, 0.00, false, false, true};
 
 void setup()
 {
