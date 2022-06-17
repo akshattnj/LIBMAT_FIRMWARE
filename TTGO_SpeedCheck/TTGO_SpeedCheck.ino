@@ -38,5 +38,5 @@ void loop()
         speed.previous = speed.current;
     }
     speed.previousState = speed.currentState;
-    delay(1);
+    delay(2);
 }

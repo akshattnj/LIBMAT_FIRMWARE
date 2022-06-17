@@ -327,8 +327,8 @@ void modemControl(void *parameters)
             ESP_LOGI(TAG, "Sending Data");
             memset(charTelemetry, 0, 2048);
             ESP_LOGI(TAG, "Pitch: %.2f| Roll: %.2f | TimeStamp: %llu | Chars Processed : %lu", mpu.getAngleX(), mpu.getAngleY(), getDateTime(), gps.charsProcessed());
-            doc["pitch"] = 10;
-            doc["roll"] = 20;
+            doc["pitch"] = mpu.getAngleX();
+            doc["roll"] = mpu.getAngleY();
             if (gps.location.isValid())
             {
                 ESP_LOGI(TAG, "Location Data Available");
@@ -415,7 +415,7 @@ void setup()
     setupModem();
     SerialAT.begin(115200, SERIAL_8N1, MODEM_RX, MODEM_TX);
     SerialGPS.begin(9800, SERIAL_8N1, GPS_RX, GPS_TX);
-    // initialiseMPU6050();
+    initialiseMPU6050();
     ESP_LOGI(TAG, "Serial setup complete");
 
     delay(10000);
@@ -431,7 +431,7 @@ void setup()
  */
 void loop()
 {
-    // mpu.update();
+    mpu.update();
     while (SerialAT.available() && !handOverSerial)
     {
         c = (char *)malloc(1024);
