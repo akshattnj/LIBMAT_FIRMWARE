@@ -65,6 +65,31 @@ TinyGPSPlus gps;
 struct tm timeInfo;
 struct timeval tv;
 
+/**
+ * @brief Struct to handle speed measurement related variables
+ * @param pin Pin to which IR data is connected (constant unsigned byte)
+ * @param current Time when black strip was detected (unsigned long)
+ * @param previous The last time when black strip was detected (unsigned long)
+ * @param rpm Rotations per minute (unsigned integer)
+ * @param rps Rotations per second (float)
+ * @param previousState IR sensor data in previous poll (bool)
+ * @param currentState IR sensor data in current poll (bool)
+ * @param config Set true for IR sensor active on white. 0 for active on black. (constant bool)
+ */
+struct SpeedMeasurement
+{
+    const uint8_t pin;
+    uint32_t current;
+    uint32_t previous;
+    uint16_t rpm;
+    float rps;
+    bool previousState;
+    bool currentState;
+    const bool config;
+};
+
+SpeedMeasurement speed = {34, 0L, 0L, 0, 0.00, false, false, true};
+
 // These variables are no longer used once serial is handed over to modem
 char *c;
 bool messageOK = false;
@@ -73,11 +98,13 @@ bool handOverSerial = false;
 int8_t gotCNTP = -1;
 uint8_t netStatus = 0;
 
+// Thingsboard and GSM control variables
 char charTelemetry[2048];
 time_t currentTime;
 bool thingsboardConnected = false;
 bool dataAvailable = false;
 
+// Constants
 const char *TAG = "MAIN";
 const char *apn = "airtelgprs.com";
 const char *THINGSBOARD_SERVER = "demo.thingsboard.io";
@@ -351,6 +378,30 @@ void modemControl(void *parameters)
 }
 
 /**
+ * @brief Task to measure speed of wheel
+ * @todo Calculate speed based on wheel circumference
+ *
+ * @param parameters
+ */
+void measureSpeed(void *parameters)
+{
+    speed.currentState = (digitalRead(speed.pin) == speed.config);
+    if (speed.currentState && !speed.previousState)
+    {
+        speed.current = millis();
+        if (speed.previous != 0 && speed.current != speed.previous)
+        {
+            speed.rps = (1000.00 / (speed.current - speed.previous));
+            speed.rpm = speed.rps * 60;
+            ESP_LOGI("TAG", "RPM: %u, %f, %d, %d", speed.rpm, speed.rps, speed.previousState, speed.currentState);
+        }
+        speed.previous = speed.current;
+    }
+    speed.previousState = speed.currentState;
+    delay(2);
+}
+
+/**
  * @brief Task that runs to log telemetry
  * @todo Actually log telemetry here
  *
@@ -417,12 +468,14 @@ void setup()
     SerialGPS.begin(9800, SERIAL_8N1, GPS_RX, GPS_TX);
     initialiseMPU6050();
     ESP_LOGI(TAG, "Serial setup complete");
+    pinMode(speed.pin, INPUT);
 
     delay(10000);
 
     xTaskCreate(modemControl, "modemControl", 4096, NULL, 10, NULL);
     xTaskCreate(logTelemetry, "logTelemetry", 2048, NULL, 10, NULL);
     xTaskCreate(handleGPS, "handleGPS", 2048, NULL, 12, NULL);
+    xTaskCreate(measureSpeed, "speedMeasurement", 2048, NULL, 10, NULL);
 }
 
 /**
