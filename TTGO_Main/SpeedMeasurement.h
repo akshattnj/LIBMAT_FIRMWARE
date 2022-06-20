@@ -31,7 +31,7 @@ public:
                 {
                     rps = (1000.00 / (current - previous));
                     rpm = rps * 60;
-                    ESP_LOGI("TAG", "RPM: %u, %f, %d, %d", rpm, rps, previousState, currentState);
+                    //ESP_LOGI("TAG", "RPM: %u, %f, %d, %d", rpm, rps, previousState, currentState);
                 }
                 previous = current;
             }
