@@ -50,8 +50,7 @@ Connections:
 #include <ThingsBoard.h>
 #include <MPU6050_light.h>
 #include <TinyGPSPlus.h>
-
-#include "SpeedMeasurement.h"
+#include <Adafruit_ADS1X15.h>
 
 #include <StreamDebugger.h>
 StreamDebugger debugger(SerialAT, SerialMon);
@@ -59,12 +58,12 @@ TinyGsm modem(debugger);
 
 AXP20X_Class axp;
 // TinyGsm modem(SerialAT);
-SpeedMeasurement speed(34);
 TinyGsmClient client(modem);
 ThingsBoard tb(client);
-StaticJsonDocument<2048> doc;
+StaticJsonDocument<1024> doc;
 MPU6050 mpu(Wire);
 TinyGPSPlus gps;
+Adafruit_ADS1015 ads;
 struct tm timeInfo;
 struct timeval tv;
 
@@ -77,10 +76,9 @@ int8_t gotCNTP = -1;
 uint8_t netStatus = 0;
 
 // Thingsboard and GSM control variables
-char charTelemetry[2048];
+char charTelemetry[1024];
 time_t currentTime;
 bool thingsboardConnected = false;
-bool dataAvailable = false;
 
 // Constants
 const char *TAG = "MAIN";
@@ -88,6 +86,9 @@ const char *apn = "airtelgprs.com";
 const char *THINGSBOARD_SERVER = "demo.thingsboard.io";
 const char *TOKEN = "1234567898765432123456789";
 const int THINGSBOARD_PORT = 1883;
+const float A3_offset = 0.060;
+const float bakBatR1 = 96.31;
+const float bakBatR2 = 19.70;
 
 /**
  * @brief Setup for PMU. Meant for the TTGO T-Call V2
@@ -327,32 +328,24 @@ void modemControl(void *parameters)
             reconnect();
         }
         thingsboardConnected = true;
-        if (dataAvailable)
-        {
-            ESP_LOGI(TAG, "Sending Data");
-            memset(charTelemetry, 0, 2048);
-            ESP_LOGI(TAG, "Pitch: %.2f| Roll: %.2f | TimeStamp: %llu | Chars Processed : %lu", mpu.getAngleX(), mpu.getAngleY(), getDateTime(), gps.charsProcessed());
-            doc["pitch"] = mpu.getAngleX();
-            doc["roll"] = mpu.getAngleY();
-            if (gps.location.isValid())
-            {
-                ESP_LOGI(TAG, "Location Data Available");
-                doc["latitude"] = gps.location.lat();
-                doc["longitude"] = gps.location.lng();
-            }
-            else
-            {
-                ESP_LOGI(TAG, "No Location data yet");
-            }
-            serializeJson(doc, charTelemetry);
-            ESP_LOGD(TAG, "%s", charTelemetry);
-            bool s = tb.sendTelemetryJson(charTelemetry);
-            Serial.println(s);
-            doc.clear();
-        }
+
+        ESP_LOGI(TAG, "Sending Data");
+        memset(charTelemetry, 0, 1024);
+        serializeJson(doc, charTelemetry);
+        ESP_LOGD(TAG, "%s", charTelemetry);
+        bool s = tb.sendTelemetryJson(charTelemetry);
+        Serial.println(s);
+        doc.clear();
         delay(3000);
         yield();
     }
+}
+
+float getBackupBatteryVoltage()
+{
+    int16_t bakBatRaw = ads.readADC_SingleEnded(3);
+    float bakBatVolt = ads.computeVolts(bakBatRaw) - A3_offset;
+    return (bakBatRaw * (bakBatR1 + bakBatR2)) / bakBatR2;
 }
 
 /**
@@ -365,11 +358,24 @@ void logTelemetry(void *parameters)
 {
     while (1)
     {
-        if (thingsboardConnected)
+
+        ESP_LOGI(TAG, "Logging data");
+        ESP_LOGI(TAG, "Pitch: %.2f| Roll: %.2f | TimeStamp: %llu | Chars Processed : %lu", mpu.getAngleX(), mpu.getAngleY(), getDateTime(), gps.charsProcessed());
+        doc["pitch"] = mpu.getAngleX();
+        doc["roll"] = mpu.getAngleY();
+        doc["backupVolt"] = getBackupBatteryVoltage();
+
+        if (gps.location.isValid())
         {
-            ESP_LOGI(TAG, "Placeholder for logging data");
-            dataAvailable = true;
+            ESP_LOGI(TAG, "Location Data Available");
+            doc["latitude"] = gps.location.lat();
+            doc["longitude"] = gps.location.lng();
         }
+        else
+        {
+            ESP_LOGI(TAG, "No Location data yet");
+        }
+
         delay(1000);
         yield();
     }
@@ -410,6 +416,18 @@ void initialiseMPU6050()
     ESP_LOGI(TAG, "Offsets Calculated");
 }
 
+void initialiseADC()
+{
+    ESP_LOGI("TAG", "Setting up ADC");
+
+    while (!ads.begin())
+    {
+        ESP_LOGE("ADC setup failed. Retrying in 2 sec");
+        delay(2000);
+    }
+    ESP_LOGI(TAG, "ADC setup complete");
+}
+
 /**
  * @brief Setup task
  *
@@ -421,6 +439,7 @@ void setup()
     SerialAT.begin(115200, SERIAL_8N1, MODEM_RX, MODEM_TX);
     SerialGPS.begin(9800, SERIAL_8N1, GPS_RX, GPS_TX);
     initialiseMPU6050();
+    initialiseADC();
     ESP_LOGI(TAG, "Serial setup complete");
 
     delay(10000);
@@ -428,9 +447,6 @@ void setup()
     xTaskCreate(modemControl, "modemControl", 4096, NULL, 10, NULL);
     xTaskCreate(logTelemetry, "logTelemetry", 2048, NULL, 10, NULL);
     xTaskCreate(handleGPS, "handleGPS", 2048, NULL, 12, NULL);
-    xTaskCreate([](void *parameters)
-                { speed.measureSpeed(parameters); },
-                "speedMeasurement", 2048, NULL, 10, NULL);
 }
 
 /**
