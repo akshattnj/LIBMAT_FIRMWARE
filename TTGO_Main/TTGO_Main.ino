@@ -341,11 +341,16 @@ void modemControl(void *parameters)
     }
 }
 
+/**
+ * @brief Calcualte backup battery voltage from ADC
+ *
+ * @return float backup voltage
+ */
 float getBackupBatteryVoltage()
 {
     int16_t bakBatRaw = ads.readADC_SingleEnded(3);
     float bakBatVolt = ads.computeVolts(bakBatRaw) - A3_offset;
-    return (bakBatRaw * (bakBatR1 + bakBatR2)) / bakBatR2;
+    return (bakBatVolt * (bakBatR1 + bakBatR2)) / bakBatR2;
 }
 
 /**
