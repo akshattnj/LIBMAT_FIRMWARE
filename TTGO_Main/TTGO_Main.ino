@@ -361,27 +361,30 @@ float getBackupBatteryVoltage()
  */
 void logTelemetry(void *parameters)
 {
+    uint32_t timer = millis();
     while (1)
     {
-
-        ESP_LOGI(TAG, "Logging data");
-        ESP_LOGI(TAG, "Pitch: %.2f| Roll: %.2f | TimeStamp: %llu | Chars Processed : %lu", mpu.getAngleX(), mpu.getAngleY(), getDateTime(), gps.charsProcessed());
-        doc["pitch"] = mpu.getAngleX();
-        doc["roll"] = mpu.getAngleY();
-        doc["backupVolt"] = getBackupBatteryVoltage();
-
-        if (gps.location.isValid())
+        mpu.update();
+        if (millis() - timer > 1000L)
         {
-            ESP_LOGI(TAG, "Location Data Available");
-            doc["latitude"] = gps.location.lat();
-            doc["longitude"] = gps.location.lng();
-        }
-        else
-        {
-            ESP_LOGI(TAG, "No Location data yet");
-        }
+            ESP_LOGI(TAG, "Logging data");
+            ESP_LOGI(TAG, "Pitch: %.2f| Roll: %.2f | TimeStamp: %llu | Chars Processed : %lu", mpu.getAngleX(), mpu.getAngleY(), getDateTime(), gps.charsProcessed());
+            doc["pitch"] = mpu.getAngleX();
+            doc["roll"] = mpu.getAngleY();
+            doc["backupVolt"] = getBackupBatteryVoltage();
 
-        delay(1000);
+            if (gps.location.isValid())
+            {
+                ESP_LOGI(TAG, "Location Data Available");
+                doc["latitude"] = gps.location.lat();
+                doc["longitude"] = gps.location.lng();
+            }
+            else
+            {
+                ESP_LOGI(TAG, "No Location data yet");
+            }
+            timer = millis();
+        }
         yield();
     }
 }
@@ -460,7 +463,6 @@ void setup()
  */
 void loop()
 {
-    mpu.update();
     while (SerialAT.available() && !handOverSerial)
     {
         c = (char *)malloc(1024);
