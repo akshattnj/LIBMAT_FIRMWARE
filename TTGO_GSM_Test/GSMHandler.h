@@ -16,6 +16,8 @@
 class GSMHandler
 {
 public:
+    time_t currentTime;
+
     GSMHandler(HardwareSerial *debugPort, HardwareSerial *GSM, bool debugMode = false)
     {
         gsmPort = GSM;
@@ -77,7 +79,19 @@ public:
         handOverSerial = true;
         while (1)
         {
-            delay(10);
+            if (!tb->connected())
+            {
+                thingsboardConnected = false;
+                reconnect();
+            }
+            thingsboardConnected = true;
+
+            ESP_LOGI(TAG, "Sending Data");
+            ESP_LOGD(TAG, "%s", charTelemetry);
+            bool s = tb->sendTelemetryJson(charTelemetry);
+            Serial.println(s);
+            delay(3000);
+            yield();
         }
     }
 
@@ -85,9 +99,12 @@ public:
     {
         while (1)
         {
-            delay(10);
+            delay(1);
             if (handOverSerial)
+            {
+                ESP_LOGD("TAG", "Ending response scanner task");
                 vTaskDelete(NULL);
+            }
 
             while (gsmPort->available())
             {
@@ -118,7 +135,35 @@ public:
                     netStatus = c[9] - '0';
                 else if (!strncmp(c, "+CNTP", 5))
                     gotCNTP = c[7] - '0';
-
+                else if (!strncmp("+CCLK", c, 5))
+                {
+                    char temp[3];
+                    temp[2] = '\0';
+                    temp[0] = c[8];
+                    temp[1] = c[9];
+                    timeInfo.tm_year = atoi(temp) + 100;
+                    temp[0] = c[11];
+                    temp[1] = c[12];
+                    timeInfo.tm_mon = atoi(temp) - 1;
+                    temp[0] = c[14];
+                    temp[1] = c[15];
+                    timeInfo.tm_mday = atoi(temp);
+                    temp[0] = c[17];
+                    temp[1] = c[18];
+                    timeInfo.tm_hour = atoi(temp);
+                    temp[0] = c[20];
+                    temp[1] = c[21];
+                    timeInfo.tm_min = atoi(temp);
+                    temp[0] = c[23];
+                    temp[1] = c[24];
+                    timeInfo.tm_sec = atoi(temp);
+                    ESP_LOGI(TAG, "Got Date/Time: %d-%d-%d | %d:%d:%d", timeInfo.tm_mday, timeInfo.tm_mon, timeInfo.tm_year, timeInfo.tm_hour, timeInfo.tm_min, timeInfo.tm_sec);
+                    currentTime = mktime(&timeInfo);
+                    tv.tv_sec = currentTime;
+                    tv.tv_usec = 0;
+                    settimeofday(&tv, NULL);
+                    getDateTime();
+                }
                 free(c);
                 c = NULL;
             }
@@ -132,14 +177,18 @@ private:
     TinyGsm *modem;
     TinyGsmClient *client;
     ThingsBoard *tb;
-    bool thingsBoardConnected = false;
+    bool thingsboardConnected = false;
 
     char *c;
+    char *charTelemetry = "{\"TestData\":44}";
     bool messageOK = false;
     bool error = false;
     bool handOverSerial = false;
     int8_t gotCNTP = -1;
     uint8_t netStatus = 0;
+
+    struct tm timeInfo;
+    struct timeval tv;
 
     void syncTime()
     {
@@ -224,5 +273,38 @@ private:
             yield();
         }
         messageOK = false;
+    }
+
+    /**
+     * @brief Get the Date and Time using internal RTC
+     *
+     * @return uint64_t the date and time in ms accuracy
+     */
+    uint64_t getDateTime()
+    {
+        getLocalTime(&timeInfo);
+        return mktime(&timeInfo) * 1000LL;
+    }
+
+    /**
+     * @brief Connect to thingsboard in case of connection failure
+     *
+     */
+    void reconnect()
+    {
+        while (!tb->connected())
+        {
+            ESP_LOGI(TAG, "Connecting to ThingsBoard node ...");
+            // Attempt to connect (clientId, username, password)
+            modem->gprsConnect(APN, "", "");
+            if (tb->connect(SECRET_SERVER, SECRET_TOKEN))
+            {
+                ESP_LOGI(TAG, "[DONE]");
+            }
+            else
+            {
+                ESP_LOGE(TAG, "[FAILED] : retrying now");
+            }
+        }
     }
 };
