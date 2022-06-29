@@ -9,10 +9,11 @@
 class TelemetryScanner
 {
 public:
-    TelemetryScanner(MPU6050 *mpuPointer, TinyGPSPlus *gpsPointer, Adafruit_ADS1015 *adsPointer)
+    TelemetryScanner(MPU6050 *mpuPointer, TinyGPSPlus *gpsPointer, HardwareSerial *gpsSer, Adafruit_ADS1015 *adsPointer)
     {
         mpu = mpuPointer;
         gps = gpsPointer;
+        gpsSerial = gpsSer;
         ads = adsPointer;
 
         enableMPU = (mpu != NULL) ? true : false;
@@ -25,25 +26,6 @@ public:
         fs.connectSDCard();
         initialiseMPU6050();
     }
-
-private:
-    MPU6050 *mpu;
-    TinyGPSPlus *gps;
-    Adafruit_ADS1015 *ads;
-    StaticJsonDocument<1024> doc;
-    FileManager fs;
-    StaticJsonDocument<96> MPUData;
-
-    const float A3_offset = 0.060;
-    const float bakBatR1 = 96.31;
-    const float bakBatR2 = 19.70;
-
-    bool enableMPU = true;
-    bool enableGPS = true;
-    bool enableADS = true;
-    bool SDMountStatus = false;
-
-    char c[1024];
 
     /**
      * @brief Setup the MPU6050
@@ -93,8 +75,46 @@ private:
         else
         {
             deserializeJson(MPUData, c);
+            ESP_LOGD("Telemetry", "Got offset data: \n%f\n%f\n%f\n%f\n%f\n%f", MPUData["accXOff"], MPUData["accYOff"],
+                     MPUData["accZOff"], MPUData["gyroXOff"], MPUData["gyroYOff"], MPUData["gyroZOff"]);
             mpu->setAccOffsets(MPUData["accXOff"], MPUData["accYOff"], MPUData["accZOff"]);
             mpu->setGyroOffsets(MPUData["gyroXOff"], MPUData["gyroYOff"], MPUData["gyroZOff"]);
         }
     }
+
+    void handleGPS(void *parameters)
+    {
+        while (true)
+        {
+            while (gpsSerial->available())
+                gps->encode(gpsSerial->read());
+            delay(1);
+            yield();
+        }
+    }
+
+    uint32_t getGPSChars()
+    {
+        return gps->charsProcessed();
+    }
+
+private:
+    MPU6050 *mpu;
+    TinyGPSPlus *gps;
+    Adafruit_ADS1015 *ads;
+    HardwareSerial *gpsSerial;
+    StaticJsonDocument<1024> doc;
+    FileManager fs;
+    StaticJsonDocument<96> MPUData;
+
+    const float A3_offset = 0.060;
+    const float bakBatR1 = 96.31;
+    const float bakBatR2 = 19.70;
+
+    bool enableMPU = true;
+    bool enableGPS = true;
+    bool enableADS = true;
+    bool SDMountStatus = false;
+
+    char c[1024];
 };
