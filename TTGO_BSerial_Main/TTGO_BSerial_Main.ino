@@ -1,23 +1,17 @@
-
-// This example code is in the Public Domain (or CC0 licensed, at your option.)
-// By Evandro Copercini - 2018
-//
-// This example creates a bridge between Serial and Classical Bluetooth (SPP)
-// and also demonstrate that SerialBT have the same functionalities of a normal Serial
-#include <Adafruit_NeoPixel.h>
 #define PIN 33
 #define NUMPIXELS 6
+#define DELAYVAL 2000
+#define ani_speed 5
+
+#include <Adafruit_NeoPixel.h>
 #include "BluetoothSerial.h"
 #include <Adafruit_ADS1X15.h>
 #include <esp_log.h>
-#if !defined(CONFIG_BT_ENABLED) || !defined(CONFIG_BLUEDROID_ENABLED)
-#error Bluetooth is not enabled! Please run `make menuconfig` to and enable it
-#endif
+
 Adafruit_NeoPixel pixels(NUMPIXELS, PIN, NEO_GRB + NEO_KHZ800);
-#define DELAYVAL 2000 // Time (in milliseconds) to pause between pixels
-#define ani_speed 5
 BluetoothSerial SerialBT;
 Adafruit_ADS1015 ads;
+
 float A3_offset = 0.060;
 int received;      // received value will be stored in this variable
 char receivedChar; // received value will be stored as CHAR in this variable
@@ -27,17 +21,20 @@ const char turnOFF = '0';
 const char lockON = '3';
 const int ignition = 25;
 const int lockpin = 4;
+
 void setup()
 {
     pinMode(33, OUTPUT);
     pinMode(32, OUTPUT);
     digitalWrite(32, HIGH);
     pixels.begin();
+
     Serial.begin(115200);
     SerialBT.begin("Movio_E-Cycle"); // Bluetooth device name
     Serial.println("The device started, now you can pair it with bluetooth!");
     Serial.println("To Unlock send: 1"); // print on serial monitor
     Serial.println("To Lock send: 2");   // print on serial monitor
+
     pinMode(ignition, OUTPUT);
     pinMode(lockpin, OUTPUT);
     ESP_LOGI("TAG", "Setting up ADC");
@@ -47,89 +44,97 @@ void setup()
         ESP_LOGE("ADC setup failed. Retrying in 2 sec");
         delay(2000);
     }
+
+    xTaskCreate(bluetoothHander, "Bluetooth", 2048, NULL, 10, NULL);
+    xTaskCreate(adcScanner, "ADC Handler", 2048, NULL, 10, NULL);
 }
 
 void loop()
 {
+    delay(10);
+}
 
-    receivedChar = (char)SerialBT.read();
-
-    if (Serial.available())
-    {
-        SerialBT.write(Serial.read());
-    }
-    if (SerialBT.available())
-    {
-
-        SerialBT.print("Received:");    // write on BT app
-        SerialBT.println(receivedChar); // write on BT app
-        Serial.print("Received:");      // print on serial monitor
-        Serial.println(receivedChar);   // print on serial monitor
-        // SerialBT.println(receivedChar);//print on the app
-        // SerialBT.write(receivedChar); //print on serial monitor
-        if (receivedChar == turnON)
-        {
-            SerialBT.println("Cycle Unlocked:"); // write on BT app
-            Serial.println("Cycle Unlocked:");   // write on serial monitor
-            digitalWrite(ignition, HIGH);        // turn the LED ON
-            unlock_rgb();
-        }
-        if (receivedChar == turnOFF)
-        {
-            SerialBT.println("Cycle Locked:"); // write on BT app
-            Serial.println("Cycle Locked:");   // write on serial monitor
-            digitalWrite(ignition, LOW);       // turn the LED off
-            lock_rgb();
-        }
-        if (receivedChar == lockON)
-        {
-            SerialBT.println("Battery Unlocked :"); // write on BT app
-            Serial.println("Lock OFF:");            // write on serial monitor
-            digitalWrite(lockpin, HIGH);            // turn the LED off
-            batt_lock_rgb();
-            delay(3000);
-            digitalWrite(lockpin, LOW); // turn the LED off
-            pixels.clear();
-        }
-    }
-    delay(20);
+void adcScanner(void *parameters)
+{
     int16_t adc0, adc1, adc2, adc3;
     float volts0, volts1, volts2, volts3, volts_bkp_batt, volts_ev_batt, degree_celcius, current;
 
-    adc0 = ads.readADC_SingleEnded(0);
-    adc1 = ads.readADC_SingleEnded(1);
-    adc2 = ads.readADC_SingleEnded(2);
-    adc3 = ads.readADC_SingleEnded(3);
+    while (1)
+    {
+        adc0 = ads.readADC_SingleEnded(0);
+        adc1 = ads.readADC_SingleEnded(1);
+        adc2 = ads.readADC_SingleEnded(2);
+        adc3 = ads.readADC_SingleEnded(3);
 
-    volts0 = ads.computeVolts(adc0);
-    volts1 = ads.computeVolts(adc1);
-    volts2 = ads.computeVolts(adc2);
-    volts3 = ads.computeVolts(adc3) - A3_offset;
-    volts_bkp_batt = calc_batt_voltage(volts3);
-    volts_ev_batt = calc_ev_voltage(volts1) - 0.80;
-    battery_bar(volts_ev_batt);
-    degree_celcius = calc_ntc_temp(adc2);
-    current = ev_current(adc0);
-    ESP_LOGI("TAG", "\nCurrent Draw(0) : %0.2f V\nEV Voltage(1): %0.2f V\nTemprature(2) : %0.2f °C\nBackup batt. Voltage(3) : %0.2f V\n", current, volts_ev_batt, degree_celcius, volts_bkp_batt);
-    SerialBT.print("-----------------------------------------------\n");
-    SerialBT.print("Backup_battery :");
-    SerialBT.print(volts_bkp_batt);
-    SerialBT.print(" V \n");
+        volts0 = ads.computeVolts(adc0);
+        volts1 = ads.computeVolts(adc1);
+        volts2 = ads.computeVolts(adc2);
+        volts3 = ads.computeVolts(adc3) - A3_offset;
 
-    SerialBT.print("Current :");
-    SerialBT.print(volts0);
-    SerialBT.print(" A \n");
+        volts_bkp_batt = calc_batt_voltage(volts3);
+        volts_ev_batt = calc_ev_voltage(volts1) - 0.80;
+        battery_bar(volts_ev_batt);
+        degree_celcius = calc_ntc_temp(adc2);
+        current = ev_current(adc0);
 
-    SerialBT.print("Cycle Battery  :");
-    SerialBT.print(volts_ev_batt);
-    SerialBT.print(" V \n");
+        ESP_LOGI("TAG", "\nCurrent Draw(0) : %0.2f V\nEV Voltage(1): %0.2f V\nTemprature(2) : %0.2f °C\nBackup batt. Voltage(3) : %0.2f V\n", current, volts_ev_batt, degree_celcius, volts_bkp_batt);
+        SerialBT.print("-----------------------------------------------\n");
+        SerialBT.printf("Backup_battery : %0.2f V\n", volts_bkp_batt);
+        SerialBT.printf("Current : %f A\n", current);
+        SerialBT.printf("Cycle Battery : %f V\n", volts_ev_batt);
+        SerialBT.printf("Ambient Temp : %f °C\n", degree_celcius);
+        SerialBT.print("-----------------------------------------------");
 
-    SerialBT.print("Ambient Temp :");
-    SerialBT.print(degree_celcius);
-    SerialBT.print(" °C \n");
+        delay(1000);
+    }
+}
 
-    SerialBT.print("-----------------------------------------------");
-    delay(1000);
+void bluetoothHander(void *parameters)
+{
+    while (1)
+    {
+        receivedChar = (char)SerialBT.read();
+
+        if (Serial.available())
+        {
+            SerialBT.write(Serial.read());
+        }
+        if (SerialBT.available())
+        {
+
+            SerialBT.print("Received:");    // write on BT app
+            SerialBT.println(receivedChar); // write on BT app
+            Serial.print("Received:");      // print on serial monitor
+            Serial.println(receivedChar);   // print on serial monitor
+            // SerialBT.println(receivedChar);//print on the app
+            // SerialBT.write(receivedChar); //print on serial monitor
+            if (receivedChar == turnON)
+            {
+                SerialBT.println("Cycle Unlocked:"); // write on BT app
+                Serial.println("Cycle Unlocked:");   // write on serial monitor
+                digitalWrite(ignition, HIGH);        // turn the LED ON
+                unlock_rgb();
+            }
+            if (receivedChar == turnOFF)
+            {
+                SerialBT.println("Cycle Locked:"); // write on BT app
+                Serial.println("Cycle Locked:");   // write on serial monitor
+                digitalWrite(ignition, LOW);       // turn the LED off
+                lock_rgb();
+            }
+            if (receivedChar == lockON)
+            {
+                SerialBT.println("Battery Unlocked :"); // write on BT app
+                Serial.println("Lock OFF:");            // write on serial monitor
+                digitalWrite(lockpin, HIGH);            // turn the LED off
+                batt_lock_rgb();
+                delay(3000);
+                digitalWrite(lockpin, LOW); // turn the LED off
+                pixels.clear();
+            }
+        }
+        delay(20);
+    }
 }
 
 float calc_batt_voltage(float vout)
@@ -146,6 +151,7 @@ float calc_ev_voltage(float vout)
     float vin = (vout * (r1 + r2)) / r2;
     return vin;
 }
+
 float calc_ntc_temp(int vout)
 {
     int Vo;
@@ -159,6 +165,7 @@ float calc_ntc_temp(int vout)
     T = -T + 273.15;
     return T;
 }
+
 void battery_bar(float volts)
 {
     if (volts >= 51 && volts < 53.2)
@@ -211,6 +218,7 @@ void battery_bar(float volts)
         pixels.show();
     }
 }
+
 void unlock_rgb()
 {
     digitalWrite(32, LOW);
