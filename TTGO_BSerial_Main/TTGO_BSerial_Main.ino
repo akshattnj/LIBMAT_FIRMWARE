@@ -161,51 +161,51 @@ float calc_ntc_temp(int vout)
 }
 void battery_bar(float volts)
 {
-    if (volts > 51 && volts < 53.2)
+    if (volts >= 51 && volts < 53.2)
     {
-        int i = map(volts, 51, 53.2, 0, 255);
+        int i = map(volts, 51, 53.2, 10, 255);
         pixels.fill(pixels.Color(0, i, 0), 0, 6);
         pixels.show();
         delay(ani_speed);
     }
 
-    if (volts > 48.8 && volts < 51)
+    if (volts >= 48.8 && volts < 51)
     {
-        int i = map(volts, 48.8, 51, 0, 204);
+        int i = map(volts, 48.8, 51, 153, 204);
         pixels.fill(pixels.Color(0, 0, 0), 0, 1);
         pixels.fill(pixels.Color(10, i, 0), 1, 5);
         pixels.show();
     }
 
-    if (volts > 46.6 && volts < 48.8)
+    if (volts >= 46.6 && volts < 48.8)
     {
-        int i = map(volts, 46.6, 48.8, 0, 153);
+        int i = map(volts, 46.6, 48.8, 102, 153);
         pixels.fill(pixels.Color(0, 0, 0), 0, 2);
         pixels.fill(pixels.Color(51, i, 0), 2, 4);
         pixels.show();
     }
-    if (volts > 44.4 && volts < 46.6)
+    if (volts >= 44.4 && volts < 46.6)
     {
-        int i = map(volts, 44.4, 46.6, 0, 102);
+        int i = map(volts, 44.4, 46.6, 51, 102);
         pixels.fill(pixels.Color(0, 0, 0), 0, 3);
         pixels.fill(pixels.Color(102, i, 0), 3, 3);
         pixels.show();
     }
-    if (volts > 42.2 && volts < 44.4)
+    if (volts >= 42.2 && volts < 44.4)
     {
         int i = map(volts, 46.6, 48.8, 0, 51);
         pixels.fill(pixels.Color(0, 0, 0), 0, 4);
         pixels.fill(pixels.Color(160, i, 0), 4, 2);
         pixels.show();
     }
-    if (volts > 40 && volts < 42.2)
+    if (volts >= 40 && volts < 42.2)
     {
         // int i= map(volts,46.6,48.8,0,255);
         pixels.fill(pixels.Color(0, 0, 0), 0, 5);
         pixels.fill(pixels.Color(254, 0, 0), 5, 1);
         pixels.show();
     }
-    if (volts > 5 && volts < 40)
+    if (volts >= 5 && volts < 40)
     {
         pixels.fill(pixels.Color(0, 0, 0), 0, 6);
         pixels.show();
@@ -262,17 +262,7 @@ void batt_lock_rgb()
 }
 float ev_current(float adc)
 {
-    float ACSValue = 0.0;
-    float Samples = 0.0;
-    float AvgACS = 0.0;
-    float BaseVol = 1.630; // Change BaseVol as per your reading in the first step.
-    for (int x = 0; x < 500; x++)
-    { // This would take 500 Samples
-        Samples = Samples + adc;
-        delay(3);
-    }
-    AvgACS = Samples / 500;
-    return ((((AvgACS) * (3.3 / 65536.0)) - BaseVol) / 0.040); // 0.040V = 66mVol. This is sensitivity of your ACS module.
+    return ((adc - 543) * 4.88 / 40.00);
 }
 void buzz()
 {
