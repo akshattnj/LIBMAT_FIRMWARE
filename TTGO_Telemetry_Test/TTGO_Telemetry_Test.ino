@@ -7,12 +7,15 @@
 #include <esp_log.h>
 #include <MPU6050_light.h>
 #include <TinyGPSPlus.h>
+#include <Adafruit_ADS1X15.h>
+
 #include "TelemetryScanner.h"
 
 MPU6050 mpu(Wire);
 TinyGPSPlus gps;
+Adafruit_ADS1115 ads;
 
-TelemetryScanner ts(&mpu, &gps, &SerialGPS, NULL);
+TelemetryScanner ts(&mpu, &gps, &SerialGPS, &ads);
 
 void setup(void)
 {
@@ -24,6 +27,9 @@ void setup(void)
     xTaskCreate([](void *parameters)
                 { ts.handleGPS(parameters); },
                 "GPS Handler", 2048, NULL, 12, NULL);
+    xTaskCreate([](void *parameters)
+                { ts.adcScanner(parameters); },
+                "ADC Scanner", 2048, NULL, 10, NULL);
 }
 
 void loop(void)

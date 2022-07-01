@@ -9,7 +9,15 @@
 class TelemetryScanner
 {
 public:
-    TelemetryScanner(MPU6050 *mpuPointer, TinyGPSPlus *gpsPointer, HardwareSerial *gpsSer, Adafruit_ADS1015 *adsPointer)
+    MPU6050 *mpu;
+    TinyGPSPlus *gps;
+    Adafruit_ADS1115 *ads;
+    HardwareSerial *gpsSerial;
+
+    int16_t adc0, adc1, adc2, adc3;
+    float volts0, volts1, volts2, volts3, volts_bkp_batt, volts_ev_batt, degree_celcius, current;
+
+    TelemetryScanner(MPU6050 *mpuPointer, TinyGPSPlus *gpsPointer, HardwareSerial *gpsSer, Adafruit_ADS1115 *adsPointer)
     {
         mpu = mpuPointer;
         gps = gpsPointer;
@@ -98,11 +106,32 @@ public:
         return gps->charsProcessed();
     }
 
+    void adcScanner(void *parameters)
+    {
+
+        while (1)
+        {
+            adc0 = ads->readADC_SingleEnded(0);
+            adc1 = ads->readADC_SingleEnded(1);
+            adc2 = ads->readADC_SingleEnded(2);
+            adc3 = ads->readADC_SingleEnded(3);
+
+            volts0 = ads->computeVolts(adc0);
+            volts1 = ads->computeVolts(adc1);
+            volts2 = ads->computeVolts(adc2);
+            volts3 = ads->computeVolts(adc3) - A3_offset;
+
+            volts_bkp_batt = calc_batt_voltage(volts3);
+            volts_ev_batt = calc_ev_voltage(volts1) - 0.80;
+            degree_celcius = calc_ntc_temp(adc2);
+            current = ev_current(adc0);
+
+            ESP_LOGI("TAG", "\nCurrent Draw(0) : %0.2f A\nEV Voltage(1): %0.2f V\nTemprature(2) : %0.2f °C\nBackup batt. Voltage(3) : %0.2f V\nRaw Data: %u %u %u %u", current, volts_ev_batt, degree_celcius, volts_bkp_batt, adc0, adc1, adc2, adc3);
+            delay(1000);
+        }
+    }
+
 private:
-    MPU6050 *mpu;
-    TinyGPSPlus *gps;
-    Adafruit_ADS1015 *ads;
-    HardwareSerial *gpsSerial;
     StaticJsonDocument<1024> doc;
     FileManager fs;
     StaticJsonDocument<96> MPUData;
@@ -116,5 +145,38 @@ private:
     bool enableADS = true;
     bool SDMountStatus = false;
 
+    float calc_batt_voltage(float vout)
+    {
+        float r1 = 96.31;
+        float r2 = 19.70;
+        float vin = (vout * (r1 + r2)) / r2;
+        return vin;
+    }
+    float calc_ev_voltage(float vout)
+    {
+        float r1 = 99.80;
+        float r2 = 4.60;
+        float vin = (vout * (r1 + r2)) / r2;
+        return vin;
+    }
+
+    float calc_ntc_temp(int vout)
+    {
+        int Vo;
+        float R1 = 11400;
+        float logR2, R2, T;
+        const float c1 = 1.009249522e-03, c2 = 2.378405444e-04, c3 = 2.019202697e-07;
+        Vo = vout;
+        R2 = R1 * (1023.0 / (float)Vo - 1.0);
+        logR2 = log(R2);
+        T = (1.0 / (c1 + c2 * logR2 + c3 * logR2 * logR2 * logR2));
+        T = -T + 273.15;
+        return T;
+    }
+
+    float ev_current(float adc)
+    {
+        return ((adc - 8688) * 0.3052 / 40.00);
+    }
     char c[1024];
 };
