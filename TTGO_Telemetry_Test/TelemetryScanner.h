@@ -33,6 +33,7 @@ public:
     {
         fs.connectSDCard();
         initialiseMPU6050();
+        initialiseADS();
     }
 
     /**
@@ -57,6 +58,7 @@ public:
                 if (attempts > 4)
                 {
                     ESP_LOGE("Telemetry", "Unable to reach MPU. Please check connections");
+                    enableMPU = false;
                     return;
                 }
                 ESP_LOGI(TAG, "Retrying in 2 seconds");
@@ -87,6 +89,29 @@ public:
                      MPUData["accZOff"], MPUData["gyroXOff"], MPUData["gyroYOff"], MPUData["gyroZOff"]);
             mpu->setAccOffsets(MPUData["accXOff"], MPUData["accYOff"], MPUData["accZOff"]);
             mpu->setGyroOffsets(MPUData["gyroXOff"], MPUData["gyroYOff"], MPUData["gyroZOff"]);
+        }
+    }
+
+    void initialiseADS()
+    {
+        if (!enableADS)
+        {
+            ESP_LOGI("Telemetry", "Skipping ADS1115 setup");
+            return;
+        }
+
+        uint8_t attempts = 0;
+        while (!ads->begin())
+        {
+            ESP_LOGE("ADC setup failed. Retrying in 2 sec");
+            attempts++;
+            if (attempts > 5)
+            {
+                ESP_LOGE("TAG", "Unable to communicate with ADS");
+                enableADS = false;
+                break;
+            }
+            delay(2000);
         }
     }
 
