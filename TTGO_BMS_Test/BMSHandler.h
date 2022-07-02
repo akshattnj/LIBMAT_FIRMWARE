@@ -78,22 +78,26 @@ void initBMS()
     RS485.begin();
 }
 
-void updateBMSTelemetry()
+void updateBMSTelemetry(void *parameters)
 {
-    err = RS485.addRequest(0x01, BMSSlaveID, READ_HOLD_REGISTER, 0x9C42, 0x0007);
-    if (err != SUCCESS)
+    while (1)
     {
-        ModbusError e(err);
-        ESP_LOGE("BMS Handler", "Error creating request: %02X - %s\n", err, (const char *)e);
-    }
+        err = RS485.addRequest(0x01, BMSSlaveID, READ_HOLD_REGISTER, 0x9C42, 0x0007);
+        if (err != SUCCESS)
+        {
+            ModbusError e(err);
+            ESP_LOGE("BMS Handler", "Error creating request: %02X - %s\n", err, (const char *)e);
+        }
 
-    delay(1000);
+        delay(1000);
 
-    err = RS485.addRequest(0x02, BMSSlaveID, READ_HOLD_REGISTER, 0x9C41, 0x001A);
-    if (err != SUCCESS)
-    {
-        ModbusError e(err);
-        ESP_LOGE("BMS Handler", "Error creating request: %02X - %s\n", err, (const char *)e);
+        err = RS485.addRequest(0x02, BMSSlaveID, READ_HOLD_REGISTER, 0x9C41, 0x001A);
+        if (err != SUCCESS)
+        {
+            ModbusError e(err);
+            ESP_LOGE("BMS Handler", "Error creating request: %02X - %s\n", err, (const char *)e);
+        }
+        delay(1000);
     }
 }
 
