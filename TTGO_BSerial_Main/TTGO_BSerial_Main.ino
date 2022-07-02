@@ -1,16 +1,16 @@
 #define PIN 33
 #define NUMPIXELS 6
-#define DELAYVAL 2000
-#define ani_speed 5
 
 #include <Adafruit_NeoPixel.h>
-#include "BluetoothSerial.h"
+#include <BluetoothSerial.h>
 #include <Adafruit_ADS1X15.h>
 #include <esp_log.h>
+#include "LEDHandler.h"
 
 Adafruit_NeoPixel pixels(NUMPIXELS, PIN, NEO_GRB + NEO_KHZ800);
 BluetoothSerial SerialBT;
-Adafruit_ADS1015 ads;
+Adafruit_ADS1115 ads;
+LEDHandler led(&pixels);
 
 float A3_offset = 0.060;
 int received;      // received value will be stored in this variable
@@ -27,7 +27,7 @@ void setup()
     pinMode(33, OUTPUT);
     pinMode(32, OUTPUT);
     digitalWrite(32, HIGH);
-    pixels.begin();
+    led.initLED();
 
     Serial.begin(115200);
     SerialBT.begin("Movio_E-Cycle"); // Bluetooth device name
@@ -73,11 +73,12 @@ void adcScanner(void *parameters)
 
         volts_bkp_batt = calc_batt_voltage(volts3);
         volts_ev_batt = calc_ev_voltage(volts1) - 0.80;
-        battery_bar(volts_ev_batt);
         degree_celcius = calc_ntc_temp(adc2);
         current = ev_current(adc0);
 
-        ESP_LOGI("TAG", "\nCurrent Draw(0) : %0.2f V\nEV Voltage(1): %0.2f V\nTemprature(2) : %0.2f °C\nBackup batt. Voltage(3) : %0.2f V\n", current, volts_ev_batt, degree_celcius, volts_bkp_batt);
+        led.batteryBar(volts_ev_batt);
+
+        ESP_LOGI("TAG", "\nCurrent Draw(0) : %0.2f A\nEV Voltage(1): %0.2f V\nTemprature(2) : %0.2f °C\nBackup batt. Voltage(3) : %0.2f V\n %u %u %u %u", current, volts_ev_batt, degree_celcius, volts_bkp_batt, adc0, adc1, adc2, adc3);
         SerialBT.print("-----------------------------------------------\n");
         SerialBT.printf("Backup_battery : %0.2f V\n", volts_bkp_batt);
         SerialBT.printf("Current : %f A\n", current);
@@ -110,29 +111,33 @@ void bluetoothHander(void *parameters)
             // SerialBT.write(receivedChar); //print on serial monitor
             if (receivedChar == turnON)
             {
+                led.LEDLock = true;
                 SerialBT.println("Cycle Unlocked:"); // write on BT app
                 Serial.println("Cycle Unlocked:");   // write on serial monitor
                 digitalWrite(ignition, HIGH);        // turn the LED ON
-                unlock_rgb();
+                led.vehicleUnlockAnimation();
             }
             if (receivedChar == turnOFF)
             {
+                led.LEDLock = true;
                 SerialBT.println("Cycle Locked:"); // write on BT app
                 Serial.println("Cycle Locked:");   // write on serial monitor
                 digitalWrite(ignition, LOW);       // turn the LED off
-                lock_rgb();
+                led.vehicleLockAnimation();
             }
             if (receivedChar == lockON)
             {
+                led.LEDLock = true;
                 SerialBT.println("Battery Unlocked :"); // write on BT app
                 Serial.println("Lock OFF:");            // write on serial monitor
                 digitalWrite(lockpin, HIGH);            // turn the LED off
-                batt_lock_rgb();
+                led.batteryUnlockAnimation();
                 delay(3000);
                 digitalWrite(lockpin, LOW); // turn the LED off
                 pixels.clear();
             }
         }
+        led.LEDLock = false;
         delay(20);
     }
 }
@@ -166,111 +171,9 @@ float calc_ntc_temp(int vout)
     return T;
 }
 
-void battery_bar(float volts)
-{
-    if (volts >= 51 && volts < 53.2)
-    {
-        int i = map(volts, 51, 53.2, 10, 255);
-        pixels.fill(pixels.Color(0, i, 0), 0, 6);
-        pixels.show();
-        delay(ani_speed);
-    }
-
-    if (volts >= 48.8 && volts < 51)
-    {
-        int i = map(volts, 48.8, 51, 153, 204);
-        pixels.fill(pixels.Color(0, 0, 0), 0, 1);
-        pixels.fill(pixels.Color(10, i, 0), 1, 5);
-        pixels.show();
-    }
-
-    if (volts >= 46.6 && volts < 48.8)
-    {
-        int i = map(volts, 46.6, 48.8, 102, 153);
-        pixels.fill(pixels.Color(0, 0, 0), 0, 2);
-        pixels.fill(pixels.Color(51, i, 0), 2, 4);
-        pixels.show();
-    }
-    if (volts >= 44.4 && volts < 46.6)
-    {
-        int i = map(volts, 44.4, 46.6, 51, 102);
-        pixels.fill(pixels.Color(0, 0, 0), 0, 3);
-        pixels.fill(pixels.Color(102, i, 0), 3, 3);
-        pixels.show();
-    }
-    if (volts >= 42.2 && volts < 44.4)
-    {
-        int i = map(volts, 46.6, 48.8, 0, 51);
-        pixels.fill(pixels.Color(0, 0, 0), 0, 4);
-        pixels.fill(pixels.Color(160, i, 0), 4, 2);
-        pixels.show();
-    }
-    if (volts >= 40 && volts < 42.2)
-    {
-        // int i= map(volts,46.6,48.8,0,255);
-        pixels.fill(pixels.Color(0, 0, 0), 0, 5);
-        pixels.fill(pixels.Color(254, 0, 0), 5, 1);
-        pixels.show();
-    }
-    if (volts >= 5 && volts < 40)
-    {
-        pixels.fill(pixels.Color(0, 0, 0), 0, 6);
-        pixels.show();
-    }
-}
-
-void unlock_rgb()
-{
-    digitalWrite(32, LOW);
-    pixels.fill(pixels.Color(0, 255, 0), 0, 6);
-    pixels.show();
-    delay(250);
-
-    digitalWrite(32, HIGH);
-    pixels.fill(pixels.Color(0, 0, 0), 0, 6);
-    pixels.show();
-    delay(250);
-
-    digitalWrite(32, LOW);
-    pixels.fill(pixels.Color(0, 255, 0), 0, 6);
-    pixels.show();
-    delay(250);
-
-    digitalWrite(32, HIGH);
-    pixels.fill(pixels.Color(0, 0, 0), 0, 6);
-    pixels.show();
-    delay(250);
-}
-void lock_rgb()
-{
-    pixels.fill(pixels.Color(255, 0, 0), 0, 6);
-    pixels.show();
-    digitalWrite(32, LOW);
-    delay(250);
-
-    pixels.fill(pixels.Color(0, 0, 0), 0, 6);
-    pixels.show();
-    digitalWrite(32, HIGH);
-    delay(250);
-
-    pixels.fill(pixels.Color(255, 0, 0), 0, 6);
-    pixels.show();
-    digitalWrite(32, LOW);
-    delay(250);
-
-    pixels.fill(pixels.Color(0, 0, 0), 0, 6);
-    pixels.show();
-    digitalWrite(32, HIGH);
-    delay(250);
-}
-void batt_lock_rgb()
-{
-    pixels.fill(pixels.Color(0, 0, 255), 0, 6);
-    pixels.show();
-}
 float ev_current(float adc)
 {
-    return ((adc - 543) * 4.88 / 40.00);
+    return ((adc - 8688) * 0.3052 / 40.00);
 }
 void buzz()
 {
