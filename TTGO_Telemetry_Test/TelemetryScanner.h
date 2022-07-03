@@ -4,6 +4,8 @@
 #include <MPU6050_light.h>
 #include <TinyGPSPlus.h>
 #include <Adafruit_ADS1X15.h>
+#include <SoftwareSerial.h>
+
 #include "FileManager.h"
 
 class TelemetryScanner
@@ -12,7 +14,7 @@ public:
     MPU6050 *mpu;
     TinyGPSPlus *gps;
     Adafruit_ADS1115 *ads;
-    HardwareSerial *gpsSerial;
+    SoftwareSerial *gpsSerial;
 
     bool enableMPU = true;
     bool enableGPS = true;
@@ -21,7 +23,7 @@ public:
     int16_t adc0, adc1, adc2, adc3;
     float volts0, volts1, volts2, volts3, volts_bkp_batt, volts_ev_batt, degree_celcius, current;
 
-    TelemetryScanner(MPU6050 *mpuPointer, TinyGPSPlus *gpsPointer, HardwareSerial *gpsSer, Adafruit_ADS1115 *adsPointer)
+    TelemetryScanner(MPU6050 *mpuPointer, TinyGPSPlus *gpsPointer, SoftwareSerial *gpsSer, Adafruit_ADS1115 *adsPointer)
     {
         mpu = mpuPointer;
         gps = gpsPointer;
