@@ -123,6 +123,8 @@ public:
 
     void handleGPS(void *parameters)
     {
+        if (!enableGPS)
+            return;
         while (true)
         {
             while (gpsSerial->available())
