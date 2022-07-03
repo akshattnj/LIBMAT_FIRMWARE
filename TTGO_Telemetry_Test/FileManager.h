@@ -1,23 +1,26 @@
+#define FORMAT_SPIFFS_IF_FAILED true
+
 #include <FS.h>
-#include <SD.h>
 #include <SPI.h>
+#include <SPIFFS.h>
 
 class FileManager
 {
 public:
     bool cardConnected = false;
     /**
-     * @brief Set up SD card connection
+     * @brief Set up SPIFFS connection
      *
      */
     void connectSDCard()
     {
-        if (!SD.begin())
+        if (!SPIFFS.begin(FORMAT_SPIFFS_IF_FAILED))
         {
-            ESP_LOGE("Telemetry", "SD Card mount failed");
+            ESP_LOGE("Telemetry", "SPIFFS mount failed");
             cardConnected = false;
+            return;
         }
-        ESP_LOGI("Telemetry", "SD Card mount Success");
+        ESP_LOGI("Telemetry", "SPIFFS mount Success");
         cardConnected = true;
     }
 
@@ -32,13 +35,13 @@ public:
     {
         if (!cardConnected)
         {
-            ESP_LOGE("File Management", "No SD Card connected");
+            ESP_LOGE("File Management", "SPIFFS not connected");
             return false;
         }
 
         ESP_LOGI("File Management", "Writing file: %s\n", path);
 
-        File file = SD.open(path, FILE_WRITE);
+        File file = SPIFFS.open(path, FILE_WRITE);
         if (!file)
         {
             ESP_LOGE("File Management", "Failed to open file for writing");
@@ -69,13 +72,13 @@ public:
     {
         if (!cardConnected)
         {
-            ESP_LOGE("File Management", "No SD Card connected");
+            ESP_LOGE("File Management", "SPIFFS not connected");
             return false;
         }
 
         ESP_LOGI("File Management", "Appending to file: %s\n", path);
 
-        File file = SD.open(path, FILE_APPEND);
+        File file = SPIFFS.open(path, FILE_APPEND);
         if (!file)
         {
             ESP_LOGE("File Management", "Failed to open file for appending");
@@ -107,10 +110,10 @@ public:
     {
         if (!cardConnected)
         {
-            ESP_LOGE("File Management", "No SD Card connected");
+            ESP_LOGE("File Management", "SPIFFS not connected");
             return 0;
         }
-        File file = SD.open(path, FILE_READ);
+        File file = SPIFFS.open(path, FILE_READ);
         if (!file)
         {
             ESP_LOGE("File Management", "Failed to open file for writing");
@@ -125,6 +128,32 @@ public:
         file.read((uint8_t *)data, (size_t)dataLen);
         data[fileSize] = '\0';
         return fileSize;
+    }
+
+    /**
+     * @brief Delete file as per path provided
+     *
+     * @param path Path of file to be deleted
+     * @return True if delete success. Else fail
+     */
+    bool deleteFile(const char *path)
+    {
+        if (!cardConnected)
+        {
+            ESP_LOGE("File Management", "SPIFFS not connected");
+            return false;
+        }
+        ESP_LOGI("File Management", "Deleting file %s", path);
+        if (SPIFFS.remove(path))
+        {
+            ESP_LOGI("Delete Success");
+            return true;
+        }
+        else
+        {
+            ESP_LOGE("File Management", "Delete failed");
+            return false;
+        }
     }
 
 private:

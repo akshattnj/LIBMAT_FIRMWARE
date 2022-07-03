@@ -14,6 +14,10 @@ public:
     Adafruit_ADS1115 *ads;
     HardwareSerial *gpsSerial;
 
+    bool enableMPU = true;
+    bool enableGPS = true;
+    bool enableADS = true;
+
     int16_t adc0, adc1, adc2, adc3;
     float volts0, volts1, volts2, volts3, volts_bkp_batt, volts_ev_batt, degree_celcius, current;
 
@@ -121,39 +125,51 @@ public:
         {
             while (gpsSerial->available())
                 gps->encode(gpsSerial->read());
+            delay(10);
+            yield();
+        }
+    }
+
+    void handleI2CTelemetry(void *parameters)
+    {
+        while (1)
+        {
+            if (enableADS)
+            {
+                adc0 = ads->readADC_SingleEnded(0);
+                adc1 = ads->readADC_SingleEnded(1);
+                adc2 = ads->readADC_SingleEnded(2);
+                adc3 = ads->readADC_SingleEnded(3);
+
+                volts0 = ads->computeVolts(adc0);
+                volts1 = ads->computeVolts(adc1);
+                volts2 = ads->computeVolts(adc2);
+                volts3 = ads->computeVolts(adc3) - A3_offset;
+
+                volts_bkp_batt = calc_batt_voltage(volts3);
+                volts_ev_batt = calc_ev_voltage(volts1) - 0.80;
+                degree_celcius = calc_ntc_temp(adc2);
+                current = ev_current(adc0);
+            }
+
+            delay(1);
+            yield();
+
+            if (enableMPU)
+            {
+                mpu->update();
+            }
+
             delay(1);
             yield();
         }
     }
 
-    uint32_t getGPSChars()
+    void getTelemetry()
     {
-        return gps->charsProcessed();
-    }
-
-    void adcScanner(void *parameters)
-    {
-
-        while (1)
-        {
-            adc0 = ads->readADC_SingleEnded(0);
-            adc1 = ads->readADC_SingleEnded(1);
-            adc2 = ads->readADC_SingleEnded(2);
-            adc3 = ads->readADC_SingleEnded(3);
-
-            volts0 = ads->computeVolts(adc0);
-            volts1 = ads->computeVolts(adc1);
-            volts2 = ads->computeVolts(adc2);
-            volts3 = ads->computeVolts(adc3) - A3_offset;
-
-            volts_bkp_batt = calc_batt_voltage(volts3);
-            volts_ev_batt = calc_ev_voltage(volts1) - 0.80;
-            degree_celcius = calc_ntc_temp(adc2);
-            current = ev_current(adc0);
-
-            ESP_LOGI("TAG", "\nCurrent Draw(0) : %0.2f A\nEV Voltage(1): %0.2f V\nTemprature(2) : %0.2f °C\nBackup batt. Voltage(3) : %0.2f V\nRaw Data: %u %u %u %u", current, volts_ev_batt, degree_celcius, volts_bkp_batt, adc0, adc1, adc2, adc3);
-            delay(1000);
-        }
+        ESP_LOGI("Telemetry", "Current Draw(0) : %0.2f A\nEV Voltage(1): %0.2f V\nTemprature(2) : %0.2f °C\nBackup batt. Voltage(3) : %0.2f V\nRaw Data: %u %u %u %u", current, volts_ev_batt, degree_celcius, volts_bkp_batt, adc0, adc1, adc2, adc3);
+        ESP_LOGI("Telemetry", "GPS Chars Processed: %lu", gps->charsProcessed());
+        ESP_LOGI("Telemetry", "Angles: %f %f\nAccl: %f %f %f\nGyro: %f %f %f", mpu->getAngleX(), mpu->getAngleY(), mpu->getAccX(), mpu->getAccY(), mpu->getAccZ(), mpu->getGyroX(), mpu->getGyroY(), mpu->getGyroZ());
     }
 
 private:
@@ -165,9 +181,6 @@ private:
     const float bakBatR1 = 96.31;
     const float bakBatR2 = 19.70;
 
-    bool enableMPU = true;
-    bool enableGPS = true;
-    bool enableADS = true;
     bool SDMountStatus = false;
 
     float calc_batt_voltage(float vout)

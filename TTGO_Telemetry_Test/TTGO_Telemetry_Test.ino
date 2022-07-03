@@ -24,16 +24,17 @@ void setup(void)
     Wire.begin(I2C_SDA, I2C_SCL);
     ts.initialiseTelemetry();
 
+    if (ts.enableGPS)
+        xTaskCreate([](void *parameters)
+                    { ts.handleGPS(parameters); },
+                    "GPS Handler", 2048, NULL, 12, NULL);
     xTaskCreate([](void *parameters)
-                { ts.handleGPS(parameters); },
-                "GPS Handler", 2048, NULL, 12, NULL);
-    xTaskCreate([](void *parameters)
-                { ts.adcScanner(parameters); },
+                { ts.handleI2CTelemetry(parameters); },
                 "ADC Scanner", 2048, NULL, 10, NULL);
 }
 
 void loop(void)
 {
-    ESP_LOGI("TAG", "GPS Chars : %lu", ts.getGPSChars());
+    ts.getTelemetry();
     delay(1000);
 }
