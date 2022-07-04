@@ -22,6 +22,7 @@ public:
 
     void vehicleLockAnimation()
     {
+        LEDLock = true;
         pixels->fill(pixels->Color(255, 0, 0), 0, 6);
         pixels->show();
         digitalWrite(32, LOW);
@@ -41,10 +42,12 @@ public:
         pixels->show();
         digitalWrite(32, HIGH);
         delay(250);
+        LEDLock = false;
     }
 
     void vehicleUnlockAnimation()
     {
+        LEDLock = true;
         digitalWrite(32, LOW);
         pixels->fill(pixels->Color(0, 255, 0), 0, 6);
         pixels->show();
@@ -64,12 +67,15 @@ public:
         pixels->fill(pixels->Color(0, 0, 0), 0, 6);
         pixels->show();
         delay(250);
+        LEDLock = false;
     }
 
     void batteryUnlockAnimation()
     {
+        LEDLock = true;
         pixels->fill(pixels->Color(0, 0, 255), 0, 6);
         pixels->show();
+        LEDLock = false;
     }
 
     void batteryBar(float volts)
