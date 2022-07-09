@@ -3,6 +3,14 @@
 #define NUMPIXELS 6
 #define I2C_SDA 21
 #define I2C_SCL 22
+#define GPS_RX 34
+#define GPS_TX 14
+#define BMS_RX 13
+#define BMS_TX 15
+#define BAT_LOCK 23
+#define IGNITION 19
+#define SerialBMS Serial1
+
 #define SERVICE_UUID "4fafc201-1fb5-459e-8fcc-c5c9c331914b"
 #define CHARACTERISTIC_UUID "beb5483e-36e1-4688-b7f5-ea07361b26a8"
 
@@ -10,6 +18,8 @@
 #include <BluetoothSerial.h>
 #include <Adafruit_ADS1X15.h>
 #include <MPU6050_light.h>
+#include <TinyGPSPlus.h>
+#include <SoftwareSerial.h>
 #include <BLEDevice.h>
 #include <BLEServer.h>
 #include <BLEUtils.h>
@@ -17,13 +27,16 @@
 #include <esp_log.h>
 
 #include "TelemetryScanner.h"
+#include "BMSHandler.h"
 
 Adafruit_NeoPixel pixels(NUMPIXELS, LED_PIN, NEO_GRB + NEO_KHZ800);
 BluetoothSerial SerialBT;
 Adafruit_ADS1115 ads;
 MPU6050 mpu(Wire);
+TinyGPSPlus gps;
+SoftwareSerial SerialGPS;
 LEDHandler led(&pixels);
-TelemetryScanner ts(&mpu, NULL, NULL, &ads, &led);
+TelemetryScanner ts(&mpu, &gps, &SerialGPS, &ads, &led);
 BLEServer *pServer = NULL;
 BLECharacteristic *pCharacteristic = NULL;
 
@@ -33,8 +46,7 @@ char receivedChar; // received value will be stored as CHAR in this variable
 const char turnON = '1';
 const char turnOFF = '0';
 const char lockON = '3';
-const int ignition = 25;
-const int lockpin = 4;
+bool vehicleState = false;
 bool deviceConnected = false;
 bool oldDeviceConnected = false;
 
@@ -62,6 +74,9 @@ class MyServerCallbacks : public BLEServerCallbacks
 
     void onDisconnect(BLEServer *pServer)
     {
+        vehicleState = false;
+        digitalWrite(IGNITION, LOW);
+        led.vehicleLockAnimation();
         deviceConnected = false;
     }
 };
@@ -86,28 +101,48 @@ class MyCallbacks : public BLECharacteristicCallbacks
             for (int i = 0; i < rxValue.length(); i++)
             {
                 Serial.print(rxValue[i]);
-                if (rxValue[i] == turnON)
+                if (rxValue[i] == turnON && batteryState == 1 && ts.volts_ev_batt > 30)
                 {
-                    sendData("Cycle Unlocked:\n");     // write on BT app
-                    Serial.println("Cycle Unlocked:"); // write on serial monitor
-                    digitalWrite(ignition, HIGH);      // turn the LED ON
+                    vehicleState = true;
+                    sendData("Cycle Unlocked:\n");
+                    ESP_LOGI("TAG", "Cycle Unlocked:");
+                    digitalWrite(IGNITION, HIGH);
                     led.vehicleUnlockAnimation();
                 }
+                else if (rxValue[i] == turnON && (batteryState == 0 || ts.volts_ev_batt < 30))
+                {
+                    sendData("{\"err\":\"Please plug in battery before attempting to start the vehicle\"}");
+                }
+                else if (rxValue[i] == turnON && batteryState == 2)
+                {
+                    sendData("{\"err\":\"Please do not attempt to start the vehicle while the batery is charging\"}");
+                }
+
                 if (rxValue[i] == turnOFF)
                 {
-                    sendData("Cycle Locked:\n");     // write on BT app
-                    Serial.println("Cycle Locked:"); // write on serial monitor
-                    digitalWrite(ignition, LOW);     // turn the LED off
+                    vehicleState = false;
+                    sendData("Cycle Locked:\n");
+                    ESP_LOGI("TAG", "Cycle Locked:");
+                    digitalWrite(IGNITION, LOW);
                     led.vehicleLockAnimation();
                 }
-                if (rxValue[i] == lockON)
+
+                if (rxValue[i] == lockON && ts.volts_ev_batt < 30 && !vehicleState)
                 {
-                    sendData("Battery Unlocked :\n"); // write on BT app
-                    Serial.println("Lock OFF:");      // write on serial monitor
-                    digitalWrite(lockpin, HIGH);      // turn the LED off
+                    sendData("Battery Unlocked :\n");
+                    ESP_LOGI("TAG", "Lock OFF:");
+                    digitalWrite(BAT_LOCK, HIGH);
                     led.batteryUnlockAnimation();
-                    digitalWrite(lockpin, LOW); // turn the LED off
+                    digitalWrite(BAT_LOCK, LOW);
                     pixels.clear();
+                }
+                else if (rxValue[i] == lockON && vehicleState)
+                {
+                    sendData("{\"err\":\"Please turn off vehicle and remove battery cable before attempting to unlock battery\"}");
+                }
+                else if (rxValue[i] == lockON)
+                {
+                    sendData("{\"err\":\"Please remove battery cable before attempting to unlock battery\"}");
                 }
             }
         }
@@ -116,25 +151,34 @@ class MyCallbacks : public BLECharacteristicCallbacks
 
 void setup()
 {
-    pinMode(33, OUTPUT);
-    pinMode(32, OUTPUT);
-    pinMode(lockpin, OUTPUT);
-    digitalWrite(32, HIGH);
+    pinMode(LED_PIN, OUTPUT);
+    pinMode(BUZZER_PIN, OUTPUT);
+    digitalWrite(BUZZER_PIN, HIGH);
+
     led.initLED();
+    led.LEDLock = true;
+    led.resetLED();
 
     Wire.begin(I2C_SDA, I2C_SCL);
     ts.initialiseTelemetry();
 
     Serial.begin(115200);
+    SerialGPS.begin(9800, SWSERIAL_8N1, GPS_RX, GPS_TX);
+
+    SerialBMS.begin(19200, SERIAL_8N1, BMS_RX, BMS_TX);
+    initBMS();
+
+    ESP_LOGI("TAG", "Serial Setup Complete");
+
     SerialBT.begin("Movio_E-Cycle"); // Bluetooth device name
     Serial.println("The device started, now you can pair it with bluetooth!");
     Serial.println("To Unlock send: 1"); // print on serial monitor
     Serial.println("To Lock send: 2");   // print on serial monitor
 
-    pinMode(ignition, OUTPUT);
-    pinMode(lockpin, OUTPUT);
+    pinMode(IGNITION, OUTPUT);
+    pinMode(BAT_LOCK, OUTPUT);
 
-    BLEDevice::init("ESP32");
+    BLEDevice::init("ESP32-C6");
     pServer = BLEDevice::createServer();
     pServer->setCallbacks(new MyServerCallbacks());
     BLEService *pService = pServer->createService(SERVICE_UUID);
@@ -149,16 +193,25 @@ void setup()
     pAdvertising->setScanResponse(false);
     pAdvertising->setMinPreferred(0x0); // set value to 0x00 to not advertise this parameter
     BLEDevice::startAdvertising();
-    Serial.println("Waiting a client connection to notify...");
+    ESP_LOGI("TAG", "BLE Setup complete");
 
     xTaskCreate([](void *parameters)
                 { ts.handleI2CTelemetry(parameters); },
-                "ADC Scanner", 2048, NULL, 10, NULL);
+                "I2C Scanner", 2048, NULL, 10, NULL);
+
+    xTaskCreate([](void *parameters)
+                { ts.handleGPS(parameters); },
+                "GPS Handler", 2048, NULL, 12, NULL);
+
+    xTaskCreate(updateBMSTelemetry, "BMS Telemetry", 2048, NULL, 15, NULL);
+
+    ESP_LOGI("TAG", "Task Generation Complete");
 }
 
 void loop()
 {
     ts.getTelemetry();
+    getBMSTelemetry();
     // disconnecting
     if (!deviceConnected && oldDeviceConnected)
     {

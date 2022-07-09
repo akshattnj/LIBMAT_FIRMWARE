@@ -42,7 +42,7 @@ public:
         pixels->show();
         digitalWrite(32, HIGH);
         delay(250);
-        LEDLock = false;
+        resetLED();
     }
 
     void vehicleUnlockAnimation()
@@ -126,6 +126,12 @@ public:
             pixels->fill(pixels->Color(0, 0, 0), 0, 6);
             pixels->show();
         }
+    }
+
+    void resetLED()
+    {
+        pixels->fill(pixels->Color(0, 0, 0), 0, 6);
+        pixels->show();
     }
 
 private:
