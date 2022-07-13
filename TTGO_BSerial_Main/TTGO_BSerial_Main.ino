@@ -8,6 +8,7 @@
 #define BMS_RX 13
 #define BMS_TX 15
 #define BAT_LOCK 23
+#define BAT_CHK 36
 #define IGNITION 19
 #define SerialBMS Serial1
 
@@ -100,8 +101,9 @@ class MyCallbacks : public BLECharacteristicCallbacks
         {
             for (int i = 0; i < rxValue.length(); i++)
             {
-                Serial.print(rxValue[i]);
-                if (rxValue[i] == turnON && batteryState == 1 && ts.volts_ev_batt > 30)
+                bool pinStatus = digitalRead(BAT_CHK);
+                ESP_LOGI("TAG", "%d", rxValue[i]);
+                if (rxValue[i] == turnON && ts.volts_ev_batt > 30 && pinStatus)
                 {
                     vehicleState = true;
                     sendData("Cycle Unlocked:\n");
@@ -109,9 +111,13 @@ class MyCallbacks : public BLECharacteristicCallbacks
                     digitalWrite(IGNITION, HIGH);
                     led.vehicleUnlockAnimation();
                 }
-                else if (rxValue[i] == turnON && (batteryState == 0 || ts.volts_ev_batt < 30))
+                else if (rxValue[i] == turnON && ts.volts_ev_batt < 30)
                 {
                     sendData("{\"err\":\"Please plug in battery before attempting to start the vehicle\"}");
+                }
+                else if (rxValue[i] == turnON && !pinStatus)
+                {
+                    sendData("{\"err\":\"Error seating battery. Please make sure the battrey is properly inserted into the holder\"}");
                 }
                 else if (rxValue[i] == turnON && batteryState == 2)
                 {
@@ -154,6 +160,7 @@ void setup()
     pinMode(LED_PIN, OUTPUT);
     pinMode(BUZZER_PIN, OUTPUT);
     digitalWrite(BUZZER_PIN, HIGH);
+    pinMode(BAT_CHK, INPUT);
 
     led.initLED();
     led.LEDLock = true;
@@ -212,6 +219,12 @@ void loop()
 {
     ts.getTelemetry();
     getBMSTelemetry();
+    if ((batteryState == 2 || ts.volts_ev_batt < 20) && vehicleState)
+    {
+        digitalWrite(IGNITION, LOW);
+        led.vehicleLockAnimation();
+        vehicleState = false;
+    }
     // disconnecting
     if (!deviceConnected && oldDeviceConnected)
     {
