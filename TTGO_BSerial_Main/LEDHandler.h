@@ -23,22 +23,22 @@ public:
     void vehicleLockAnimation()
     {
         LEDLock = true;
-        pixels->fill(pixels->Color(255, 0, 0), 0, 6);
+        pixels->fill(pixels->Color(255, 0, 0), 0, pixels->numPixels());
         pixels->show();
         digitalWrite(32, LOW);
         delay(250);
 
-        pixels->fill(pixels->Color(0, 0, 0), 0, 6);
+        pixels->fill(pixels->Color(0, 0, 0), 0, pixels->numPixels());
         pixels->show();
         digitalWrite(32, HIGH);
         delay(250);
 
-        pixels->fill(pixels->Color(255, 0, 0), 0, 6);
+        pixels->fill(pixels->Color(255, 0, 0), 0, pixels->numPixels());
         pixels->show();
         digitalWrite(32, LOW);
         delay(250);
 
-        pixels->fill(pixels->Color(0, 0, 0), 0, 6);
+        pixels->fill(pixels->Color(0, 0, 0), 0, pixels->numPixels());
         pixels->show();
         digitalWrite(32, HIGH);
         delay(250);
@@ -49,22 +49,22 @@ public:
     {
         LEDLock = true;
         digitalWrite(32, LOW);
-        pixels->fill(pixels->Color(0, 255, 0), 0, 6);
+        pixels->fill(pixels->Color(0, 255, 0), 0, pixels->numPixels());
         pixels->show();
         delay(250);
 
         digitalWrite(32, HIGH);
-        pixels->fill(pixels->Color(0, 0, 0), 0, 6);
+        pixels->fill(pixels->Color(0, 0, 0), 0, pixels->numPixels());
         pixels->show();
         delay(250);
 
         digitalWrite(32, LOW);
-        pixels->fill(pixels->Color(0, 255, 0), 0, 6);
+        pixels->fill(pixels->Color(0, 255, 0), 0, pixels->numPixels());
         pixels->show();
         delay(250);
 
         digitalWrite(32, HIGH);
-        pixels->fill(pixels->Color(0, 0, 0), 0, 6);
+        pixels->fill(pixels->Color(0, 0, 0), 0, pixels->numPixels());
         pixels->show();
         delay(250);
         LEDLock = false;
@@ -73,7 +73,7 @@ public:
     void batteryUnlockAnimation()
     {
         LEDLock = true;
-        pixels->fill(pixels->Color(0, 0, 255), 0, 6);
+        pixels->fill(pixels->Color(0, 0, 255), 0, pixels->numPixels());
         pixels->show();
         delay(3000);
         LEDLock = false;
@@ -83,49 +83,19 @@ public:
     {
         if (LEDLock)
             return;
+        if (volts < 42.2)
+        {
+            pixels->fill(pixels->Color(0, 0, 0), 0, pixels->numPixels());
+            pixels->show();
+            return;
+        }
         int i = map(volts, 42.2, 53.2, 0, 255);
-        if (volts >= 51 && volts < 53.2)
-        {
-            pixels->fill(pixels->Color(0, i, 0), 0, 6);
-            pixels->show();
-        }
+        int j = 255 - i;
+        int LEDsToFill = map(volts, 42.2, 53.2, pixels->numPixels(), 0);
 
-        if (volts >= 48.8 && volts < 51)
-        {
-            pixels->fill(pixels->Color(0, 0, 0), 0, 1);
-            pixels->fill(pixels->Color(10, i, 0), 1, 5);
-            pixels->show();
-        }
-
-        if (volts >= 46.6 && volts < 48.8)
-        {
-            pixels->fill(pixels->Color(0, 0, 0), 0, 2);
-            pixels->fill(pixels->Color(51, i, 0), 2, 4);
-            pixels->show();
-        }
-        if (volts >= 44.4 && volts < 46.6)
-        {
-            pixels->fill(pixels->Color(0, 0, 0), 0, 3);
-            pixels->fill(pixels->Color(102, i, 0), 3, 3);
-            pixels->show();
-        }
-        if (volts >= 42.2 && volts < 44.4)
-        {
-            pixels->fill(pixels->Color(0, 0, 0), 0, 4);
-            pixels->fill(pixels->Color(160, i, 0), 4, 2);
-            pixels->show();
-        }
-        if (volts >= 40 && volts < 42.2)
-        {
-            pixels->fill(pixels->Color(0, 0, 0), 0, 5);
-            pixels->fill(pixels->Color(254, 0, 0), 5, 1);
-            pixels->show();
-        }
-        if (volts >= 5 && volts < 40)
-        {
-            pixels->fill(pixels->Color(0, 0, 0), 0, 6);
-            pixels->show();
-        }
+        pixels->fill(pixels->Color(0, 0, 0), 0, pixels->numPixels() - LEDsToFill);
+        pixels->fill(pixels->Color(j, i, 0), pixels->numPixels() - LEDsToFill, LEDsToFill);
+        pixels->show();
     }
 
     void resetLED()

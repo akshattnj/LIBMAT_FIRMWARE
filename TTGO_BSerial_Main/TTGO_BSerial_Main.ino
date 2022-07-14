@@ -1,15 +1,21 @@
 #define LED_PIN 33
 #define BUZZER_PIN 32
-#define NUMPIXELS 6
+#define NUMPIXELS 10
+
 #define I2C_SDA 21
 #define I2C_SCL 22
+
 #define GPS_RX 34
 #define GPS_TX 14
+
 #define BMS_RX 13
 #define BMS_TX 15
+
 #define BAT_LOCK 23
 #define BAT_CHK 36
+
 #define IGNITION 19
+
 #define SerialBMS Serial1
 
 #define SERVICE_UUID "4fafc201-1fb5-459e-8fcc-c5c9c331914b"
