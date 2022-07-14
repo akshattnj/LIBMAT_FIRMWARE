@@ -79,6 +79,19 @@ public:
         LEDLock = false;
     }
 
+    long mapFloat(float x, float in_min, float in_max, float out_min, float out_max)
+    {
+        const float dividend = out_max - out_min;
+        const float divisor = in_max - in_min;
+        const float delta = x - in_min;
+        if (divisor == 0)
+        {
+            log_e("Invalid map input range, min == max");
+            return -1; // AVR returns -1, SAM returns 0
+        }
+        return (long)((delta * dividend + (divisor / 2.00)) / divisor + out_min);
+    }
+
     void batteryBar(float volts)
     {
         if (LEDLock)
@@ -89,9 +102,9 @@ public:
             pixels->show();
             return;
         }
-        int i = map(volts, 42.2, 53.2, 0, 255);
+        int i = mapFloat(volts, 42.2, 53.2, 0, 255);
         int j = 255 - i;
-        int LEDsToFill = map(volts, 42.2, 53.2, pixels->numPixels(), 0);
+        int LEDsToFill = mapFloat(volts, 42.2, 53.2, 0, pixels->numPixels());
 
         pixels->fill(pixels->Color(0, 0, 0), 0, pixels->numPixels() - LEDsToFill);
         pixels->fill(pixels->Color(j, i, 0), pixels->numPixels() - LEDsToFill, LEDsToFill);
