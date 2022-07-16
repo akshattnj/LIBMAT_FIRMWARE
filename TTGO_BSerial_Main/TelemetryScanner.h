@@ -27,7 +27,7 @@ public:
     Adafruit_ADS1115 *ads;
     SoftwareSerial *gpsSerial;
     LEDHandler *led;
-    StaticJsonDocument<1024> telemetryDoc;
+    StaticJsonDocument<512> telemetryDoc;
 
     bool enableMPU = true;
     bool enableGPS = true;
@@ -189,6 +189,7 @@ public:
 
     void getTelemetry()
     {
+        telemetryDoc.clear();
         if (enableADS)
         {
             ESP_LOGI("Telemetry", "Current Draw(0) : %0.2f A\nEV Voltage(1): %0.2f V\nTemprature(2) : %0.2f °C\nBackup batt. Voltage(3) : %0.2f V\nRaw Data: %u %u %u %u", current, volts_ev_batt, degree_celcius, volts_bkp_batt, adc0, adc1, adc2, adc3);
@@ -206,6 +207,9 @@ public:
         if (enableMPU)
         {
             ESP_LOGI("Telemetry", "Angles: %f %f\nAccl: %f %f %f\nGyro: %f %f %f", mpu->getAngleX(), mpu->getAngleY(), mpu->getAccX(), mpu->getAccY(), mpu->getAccZ(), mpu->getGyroX(), mpu->getGyroY(), mpu->getGyroZ());
+            telemetryDoc["pitch"] = mpu->getAngleX();
+            telemetryDoc["roll"] = mpu->getAngleY();
+            telemetryDoc["yaw"] = mpu->getAngleZ();
         }
     }
 

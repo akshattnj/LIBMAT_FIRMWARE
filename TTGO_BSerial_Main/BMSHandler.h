@@ -1,4 +1,5 @@
 #include <ModbusClientRTU.h>
+#include <ArduinoJson.h>
 #include <esp_log.h>
 #include <Arduino.h>
 
@@ -17,6 +18,7 @@ float dischargingCurrent;
 float totalCellVoltage;
 float remainingPower;
 
+StaticJsonDocument<1024> BMSDoc;
 ModbusClientRTU RS485(Serial1);
 Error err;
 uint8_t BMSSlaveID = 2;
@@ -161,4 +163,19 @@ void getBMSTelemetry()
     ESP_LOGI("TAG", "Charging V : %0.2fV\nCharging A : %0.2fA\nDischarging V : %0.2fV\nDischarging A : %0.2fA",
              chargingVoltage, chargingCurrent, dischargingVoltage, dischargingCurrent);
     ESP_LOGI("TAG", "Total Cell Voltage: %0.2f\nRemaining: %0.2f", totalCellVoltage, remainingPower);
+
+    BMSDoc.clear();
+    JsonArray cellVoltages = BMSDoc.createNestedArray("Cell_Voltages");
+    cellVoltages.add(cellVolts);
+    JsonArray temperatures = BMSDoc.createNestedArray("Temperature");
+    temperatures.add(temperature);
+    BMSDoc["Current"] = current;
+    BMSDoc["Capacity"] = capah;
+    BMSDoc["BMS_State"] = BMSState;
+    BMSDoc["Charging_V"] = chargingVoltage;
+    BMSDoc["Charging_I"] = chargingCurrent;
+    BMSDoc["Discharging_V"] = dischargingVoltage;
+    BMSDoc["Discharging_C"] = dischargingCurrent;
+    BMSDoc["Voltage"] = totalCellVoltage;
+    BMSDoc["Battery_Percent"] = remainingPower;
 }

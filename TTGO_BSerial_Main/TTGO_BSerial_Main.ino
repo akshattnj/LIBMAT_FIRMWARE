@@ -50,6 +50,7 @@ BLECharacteristic *pCharacteristic = NULL;
 float A3_offset = 0.060;
 int received;      // received value will be stored in this variable
 char receivedChar; // received value will be stored as CHAR in this variable
+char telemetryJSON[1024];
 const char turnON = '1';
 const char turnOFF = '0';
 const char lockON = '3';
@@ -221,10 +222,22 @@ void setup()
     ESP_LOGI("TAG", "Task Generation Complete");
 }
 
+void mergeJSON(JsonObject dest, JsonObjectConst src)
+{
+    for (auto kvp : src)
+    {
+        dest[kvp.key()] = kvp.value();
+    }
+}
+
 void loop()
 {
     ts.getTelemetry();
     getBMSTelemetry();
+    mergeJSON(BMSDoc.as<JsonObject>(), ts.telemetryDoc.as<JsonObject>());
+    memset(telemetryJSON, 0, 1024);
+    serializeJsonPretty(BMSDoc, telemetryJSON);
+    sendData(telemetryJSON);
     if ((batteryState == 2 || ts.volts_ev_batt < 20) && vehicleState)
     {
         digitalWrite(IGNITION, LOW);
