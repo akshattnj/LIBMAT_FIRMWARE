@@ -92,19 +92,13 @@ public:
         return (long)((delta * dividend + (divisor / 2.00)) / divisor + out_min);
     }
 
-    void batteryBar(float volts)
+    void batteryBar(float batteryPercent)
     {
         if (LEDLock)
             return;
-        if (volts < 42.2)
-        {
-            pixels->fill(pixels->Color(0, 0, 0), 0, pixels->numPixels());
-            pixels->show();
-            return;
-        }
-        int i = mapFloat(volts, 42.2, 53.2, 0, 255);
+        int i = mapFloat(batteryPercent, 0, 100, 0, 255);
         int j = 255 - i;
-        int LEDsToFill = mapFloat(volts, 42.2, 53.2, 0, pixels->numPixels());
+        int LEDsToFill = mapFloat(batteryPercent, 0, 100, 0, pixels->numPixels());
 
         pixels->fill(pixels->Color(0, 0, 0), 0, pixels->numPixels() - LEDsToFill);
         pixels->fill(pixels->Color(j, i, 0), pixels->numPixels() - LEDsToFill, LEDsToFill);

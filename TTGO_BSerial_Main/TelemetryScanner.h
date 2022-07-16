@@ -35,14 +35,16 @@ public:
 
     int16_t adc0, adc1, adc2, adc3;
     float volts0, volts1, volts2, volts3, volts_bkp_batt, volts_ev_batt, degree_celcius, current;
+    float *batteryPercent;
 
-    TelemetryScanner(MPU6050 *mpuPointer, TinyGPSPlus *gpsPointer, SoftwareSerial *gpsSer, Adafruit_ADS1115 *adsPointer, LEDHandler *ledPointer)
+    TelemetryScanner(MPU6050 *mpuPointer, TinyGPSPlus *gpsPointer, SoftwareSerial *gpsSer, Adafruit_ADS1115 *adsPointer, LEDHandler *ledPointer, float *remainingPower)
     {
         mpu = mpuPointer;
         gps = gpsPointer;
         gpsSerial = gpsSer;
         ads = adsPointer;
         led = ledPointer;
+        batteryPercent = remainingPower;
 
         enableMPU = (mpu != NULL) ? true : false;
         enableGPS = (gps != NULL) ? true : false;
@@ -169,7 +171,7 @@ public:
                 degree_celcius = calc_ntc_temp(adc2);
                 current = ev_current(adc0);
 
-                led->batteryBar(volts_ev_batt);
+                led->batteryBar(*batteryPercent);
             }
 
             delay(1);

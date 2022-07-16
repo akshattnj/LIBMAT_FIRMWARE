@@ -43,7 +43,7 @@ MPU6050 mpu(Wire);
 TinyGPSPlus gps;
 SoftwareSerial SerialGPS;
 LEDHandler led(&pixels);
-TelemetryScanner ts(&mpu, &gps, &SerialGPS, &ads, &led);
+TelemetryScanner ts(&mpu, &gps, &SerialGPS, &ads, &led, &remainingPower);
 BLEServer *pServer = NULL;
 BLECharacteristic *pCharacteristic = NULL;
 
