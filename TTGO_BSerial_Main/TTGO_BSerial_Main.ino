@@ -18,6 +18,7 @@
 
 #define SerialBMS Serial1
 
+#define DEVICE_NAME "ESP_32-Prototype"
 #define SERVICE_UUID "4fafc201-1fb5-459e-8fcc-c5c9c331914b"
 #define CHARACTERISTIC_UUID "beb5483e-36e1-4688-b7f5-ea07361b26a8"
 
@@ -51,6 +52,8 @@ float A3_offset = 0.060;
 int received;      // received value will be stored in this variable
 char receivedChar; // received value will be stored as CHAR in this variable
 char telemetryJSON[1024];
+char BMSTelemetry[512];
+char sensorTelemetry[512];
 const char turnON = '1';
 const char turnOFF = '0';
 const char lockON = '3';
@@ -106,6 +109,7 @@ class MyCallbacks : public BLECharacteristicCallbacks
 
         if (rxValue.length() > 0)
         {
+            ESP_LOGI("TAG", "%s", rxValue);
             for (int i = 0; i < rxValue.length(); i++)
             {
                 bool pinStatus = digitalRead(BAT_CHK);
@@ -192,7 +196,7 @@ void setup()
     pinMode(IGNITION, OUTPUT);
     pinMode(BAT_LOCK, OUTPUT);
 
-    BLEDevice::init("ESP32-C6");
+    BLEDevice::init(DEVICE_NAME);
     pServer = BLEDevice::createServer();
     pServer->setCallbacks(new MyServerCallbacks());
     BLEService *pService = pServer->createService(SERVICE_UUID);
@@ -234,10 +238,22 @@ void loop()
 {
     ts.getTelemetry();
     getBMSTelemetry();
-    mergeJSON(BMSDoc.as<JsonObject>(), ts.telemetryDoc.as<JsonObject>());
+
+    memset(BMSTelemetry, 0, 512);
+    memset(sensorTelemetry, 0, 512);
     memset(telemetryJSON, 0, 1024);
+
+    serializeJsonPretty(BMSDoc, BMSTelemetry);
+    serializeJsonPretty(ts.telemetryDoc, sensorTelemetry);
+    sendData(BMSTelemetry);
+    sendData(sensorTelemetry);
+
+    mergeJSON(BMSDoc.as<JsonObject>(), ts.telemetryDoc.as<JsonObject>());
     serializeJsonPretty(BMSDoc, telemetryJSON);
+
+    ESP_LOGI("TAG", "%s", telemetryJSON);
     sendData(telemetryJSON);
+
     if ((batteryState == 2 || ts.volts_ev_batt < 20) && vehicleState)
     {
         digitalWrite(IGNITION, LOW);
