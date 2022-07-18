@@ -190,6 +190,7 @@ public:
     void getTelemetry()
     {
         telemetryDoc.clear();
+        telemetryDoc["type"] = 1;
         if (enableADS)
         {
             ESP_LOGI("Telemetry", "Current Draw(0) : %0.2f A\nEV Voltage(1): %0.2f V\nTemprature(2) : %0.2f °C\nBackup batt. Voltage(3) : %0.2f V\nRaw Data: %u %u %u %u", current, volts_ev_batt, degree_celcius, volts_bkp_batt, adc0, adc1, adc2, adc3);

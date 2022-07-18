@@ -244,15 +244,16 @@ void loop()
     memset(telemetryJSON, 0, 1024);
 
     serializeJsonPretty(BMSDoc, BMSTelemetry);
+    BMSTelemetry[strlen(BMSTelemetry)] = '\n';
     serializeJsonPretty(ts.telemetryDoc, sensorTelemetry);
+    sensorTelemetry[strlen(sensorTelemetry)] = '\n';
     sendData(BMSTelemetry);
     sendData(sensorTelemetry);
 
     mergeJSON(BMSDoc.as<JsonObject>(), ts.telemetryDoc.as<JsonObject>());
-    serializeJsonPretty(BMSDoc, telemetryJSON);
+    serializeJson(BMSDoc, telemetryJSON);
 
     ESP_LOGI("TAG", "%s", telemetryJSON);
-    sendData(telemetryJSON);
 
     if ((batteryState == 2 || ts.volts_ev_batt < 20) && vehicleState)
     {
