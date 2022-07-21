@@ -9,9 +9,6 @@
  * @copyright None
  *
  */
-
-#define QUOTE(...) #__VA_ARGS__
-
 #include <ArduinoJson.h>
 #include <BLEDevice.h>
 #include <BLEServer.h>
@@ -27,56 +24,56 @@ bool oldDeviceConnected = false;
 const uint8_t LEDPin = 12;
 char *temp = "hello\n";
 
-const char *BMSDummy = QUOTE({
-    "type" : 1,
-        "Cell_Voltages" : [
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0
-        ],
-                          "Temperature" : [
-                              0,
-                              0,
-                              0,
-                              0,
-                              0,
-                              0
-                          ],
-                                          "Current" : 0,
-                                          "Capacity" : 0,
-                                          "BMS_State" : 0,
-                                          "Charging_V" : 0,
-                                          "Charging_I" : 0,
-                                          "Discharging_V" : 0,
-                                          "Discharging_C" : 0,
-                                          "Voltage" : 0,
-                                          "Battery_Percent" : 0
-}\n);
+const char *BMSDummy = "{\
+  \"type\": 1,\
+  \"Cell_Voltages\": [\
+    0,\
+    0,\
+    0,\
+    0,\
+    0,\
+    0,\
+    0,\
+    0,\
+    0,\
+    0,\
+    0,\
+    0,\
+    0,\
+    0,\
+    0\
+  ],\
+  \"Temperature\": [\
+    0,\
+    0,\
+    0,\
+    0,\
+    0,\
+    0\
+  ],\
+  \"Current\": 0,\
+  \"Capacity\": 0,\
+  \"BMS_State\": 0,\
+  \"Charging_V\": 0,\
+  \"Charging_I\": 0,\
+  \"Discharging_V\": 0,\
+  \"Discharging_C\": 0,\
+  \"Voltage\": 0,\
+  \"Battery_Percent\": 0\
+}\n";
 
-const char *sensorDummy = QUOTE({
-    "type" : 1,
-        "CurrentDraw(ADC)" : -40.4084816,
-                             "EV Voltage(ADC)" : 13.15782642,
-                             "Temprature(ADC)" : null,
-                                                 "BackupVoltage(ADC)" : 3.250635147,
-                                                 "Latitude" : 0,
-                                                 "Longitude" : 0,
-                                                 "pitch" : -15.73036289,
-                                                           "roll" : 53.15324402,
-                                                           "yaw" : -11.05370426
-}\n);
+const char *sensorDummy = "{\
+  \"type\": 1,\
+  \"CurrentDraw(ADC)\": -40.4084816,\
+  \"EV Voltage(ADC)\": 13.15782642,\
+  \"Temprature(ADC)\": null,\
+  \"BackupVoltage(ADC)\": 3.250635147,\
+  \"Latitude\": 0,\
+  \"Longitude\": 0,\
+  \"pitch\": -15.73036289,\
+  \"roll\": 53.15324402,\
+  \"yaw\": -11.05370426\
+}\n";
 
 #define SERVICE_UUID "4fafc201-1fb5-459e-8fcc-c5c9c331914b"
 #define CHARACTERISTIC_UUID "beb5483e-36e1-4688-b7f5-ea07361b26a8"
