@@ -26,7 +26,6 @@ bool pauseTelemetry = false;
 const uint8_t LEDPin = 12;
 
 const char *BMSDummy = "{\
-  \"type\": 1,\
   \"Cell_Voltages\": [\
     0,\
     0,\
@@ -64,7 +63,6 @@ const char *BMSDummy = "{\
 }\n";
 
 const char *sensorDummy = "{\
-  \"type\": 1,\
   \"CurrentDraw(ADC)\": -40.4084816,\
   \"EV Voltage(ADC)\": 13.15782642,\
   \"Temprature(ADC)\": null,\
