@@ -9,22 +9,14 @@
  * @copyright None
  *
  */
+
+#define QUOTE(...) #__VA_ARGS__
+
 #include <ArduinoJson.h>
 #include <BLEDevice.h>
 #include <BLEServer.h>
 #include <BLEUtils.h>
 #include <BLE2902.h>
-
-#define MBEDTLS_CIPHER_MODE_WITH_PADDING
-#define ARRAY_WIDTH 1024
-
-static const uint8_t key_128[] = {
-    0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
-    0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f};
-
-static const uint8_t IV[] = {
-    0x10, 0x0f, 0x0e, 0x0d, 0x0c, 0x0b, 0x0a, 0x09,
-    0x08, 0x07, 0x06, 0x05, 0x04, 0x03, 0x02, 0x01};
 
 StaticJsonDocument<48> doc;
 BLEServer *pServer = NULL;
@@ -33,7 +25,58 @@ BLECharacteristic *pCharacteristic = NULL;
 bool deviceConnected = false;
 bool oldDeviceConnected = false;
 const uint8_t LEDPin = 12;
-uint8_t temp[] = {'h', 'e', 'l', 'l', 'o', '\n'};
+char *temp = "hello\n";
+
+const char *BMSDummy = QUOTE({
+    "type" : 1,
+        "Cell_Voltages" : [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+        ],
+                          "Temperature" : [
+                              0,
+                              0,
+                              0,
+                              0,
+                              0,
+                              0
+                          ],
+                                          "Current" : 0,
+                                          "Capacity" : 0,
+                                          "BMS_State" : 0,
+                                          "Charging_V" : 0,
+                                          "Charging_I" : 0,
+                                          "Discharging_V" : 0,
+                                          "Discharging_C" : 0,
+                                          "Voltage" : 0,
+                                          "Battery_Percent" : 0
+}\n);
+
+const char *sensorDummy = QUOTE({
+    "type" : 1,
+        "CurrentDraw(ADC)" : -40.4084816,
+                             "EV Voltage(ADC)" : 13.15782642,
+                             "Temprature(ADC)" : null,
+                                                 "BackupVoltage(ADC)" : 3.250635147,
+                                                 "Latitude" : 0,
+                                                 "Longitude" : 0,
+                                                 "pitch" : -15.73036289,
+                                                           "roll" : 53.15324402,
+                                                           "yaw" : -11.05370426
+}\n);
 
 #define SERVICE_UUID "4fafc201-1fb5-459e-8fcc-c5c9c331914b"
 #define CHARACTERISTIC_UUID "beb5483e-36e1-4688-b7f5-ea07361b26a8"
@@ -58,7 +101,7 @@ class MyServerCallbacks : public BLEServerCallbacks
 class MyCallbacks : public BLECharacteristicCallbacks
 {
     /**
-     * @brief What to do when data is written to the BLE.
+     * @brief Callback functoin for BLE Notify
      *
      * @param pCharacteristic Input used by library.
      */
@@ -89,11 +132,11 @@ class MyCallbacks : public BLECharacteristicCallbacks
  * @param data Data to be sent (unsigned char*)
  * @param len Length of data (size_t)
  */
-void sendData(uint8_t *data, size_t len)
+void sendData(const char *data)
 {
     if (deviceConnected)
     {
-        pCharacteristic->setValue(data, len);
+        pCharacteristic->setValue((uint8_t *)data, strlen(data));
         pCharacteristic->notify();
     }
 }
@@ -105,7 +148,7 @@ void setup()
     pinMode(LEDPin, OUTPUT);
     digitalWrite(LEDPin, HIGH);
     // Create the BLE Device
-    BLEDevice::init("ESP32");
+    BLEDevice::init("ESP32-001");
     Serial.println("ESP Setup Complete");
     // Create the BLE Server
     pServer = BLEDevice::createServer();
@@ -136,8 +179,8 @@ void setup()
 
 void loop()
 {
-
-    sendData(temp, temp - *(&temp - 1));
+    sendData(BMSDummy);
+    sendData(sensorDummy);
     delay(1000);
     // disconnecting
     if (!deviceConnected && oldDeviceConnected)
