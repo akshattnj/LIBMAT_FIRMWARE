@@ -153,7 +153,14 @@ class MyCallbacks : public BLECharacteristicCallbacks
                 data = doc["battery"];
                 if (!data.isNull())
                 {
-                    sendData("Battery Unlocked\n{\"error\":0}\n");
+                    sendData("{\"error\":0}\n");
+                    for (int i = 0; i < 3; i++)
+                    {
+                        digitalWrite(LEDPin, LOW);
+                        delay(100);
+                        digitalWrite(LEDPin, HIGH);
+                        delay(100);
+                    }
                     return;
                 }
                 data = doc["telemetry"];
