@@ -14,6 +14,7 @@
 #include <BLEServer.h>
 #include <BLEUtils.h>
 #include <BLE2902.h>
+#include <esp_log.h>
 
 StaticJsonDocument<48> doc;
 BLEServer *pServer = NULL;
@@ -21,8 +22,8 @@ BLECharacteristic *pCharacteristic = NULL;
 
 bool deviceConnected = false;
 bool oldDeviceConnected = false;
+bool pauseTelemetry = false;
 const uint8_t LEDPin = 12;
-char *temp = "hello\n";
 
 const char *BMSDummy = "{\
   \"type\": 1,\
@@ -78,13 +79,38 @@ const char *sensorDummy = "{\
 #define SERVICE_UUID "4fafc201-1fb5-459e-8fcc-c5c9c331914b"
 #define CHARACTERISTIC_UUID "beb5483e-36e1-4688-b7f5-ea07361b26a8"
 
+/**
+ * @brief Send data via BLE. Uses global variables deviceConnected and pCharacteristic.
+ *
+ * @param data Data to be sent (unsigned char*)
+ * @param len Length of data (size_t)
+ */
+void sendData(const char *data)
+{
+    if (deviceConnected)
+    {
+        pCharacteristic->setValue((uint8_t *)data, strlen(data));
+        pCharacteristic->notify();
+    }
+}
+
 class MyServerCallbacks : public BLEServerCallbacks
 {
+    /**
+     * @brief Callback function for when the BLE connects
+     *
+     * @param pServer
+     */
     void onConnect(BLEServer *pServer)
     {
         deviceConnected = true;
     };
 
+    /**
+     * @brief Callback function for when the BLE disconnects
+     *
+     * @param pServer
+     */
     void onDisconnect(BLEServer *pServer)
     {
         deviceConnected = false;
@@ -100,7 +126,7 @@ class MyCallbacks : public BLECharacteristicCallbacks
     /**
      * @brief Callback functoin for BLE Notify
      *
-     * @param pCharacteristic Input used by library.
+     * @param pCharacteristic
      */
     void onWrite(BLECharacteristic *pCharacteristic)
     {
@@ -108,33 +134,53 @@ class MyCallbacks : public BLECharacteristicCallbacks
 
         if (rxValue.length() > 0)
         {
-            for (int i = 0; i < rxValue.length(); i++)
-                Serial.print(rxValue[i]);
-            Serial.println();
+            ESP_LOGI("TAG", "%s", rxValue);
+            doc.clear();
             DeserializationError error = deserializeJson(doc, rxValue);
             if (error)
             {
-                Serial.print("deserializeJson() failed: ");
-                Serial.println(error.c_str());
+                ESP_LOGE("TAG", "deserializeJson() failed: %s", error.c_str());
+                sendData("{\"error\":1}");
                 return;
             }
-            digitalWrite(LEDPin, doc["LEDStatus"]);
+            else
+            {
+                JsonVariant data = doc["lock"];
+                if (!data.isNull())
+                {
+                    digitalWrite(LEDPin, !data.as<bool>());
+                    sendData("{\"error\":0}\n");
+                    return;
+                }
+                data = doc["battery"];
+                if (!data.isNull())
+                {
+                    sendData("Battery Unlocked\n{\"error\":0}\n");
+                    return;
+                }
+                data = doc["telemetry"];
+                if (!data.isNull())
+                {
+                    pauseTelemetry = data.as<bool>();
+                    sendData("{\"error\":0}\n");
+                    return;
+                }
+                sendData("{\"error\":99}\n");
+            }
         }
     }
 };
 
-/**
- * @brief Send data via BLE. Uses global variables deviceConnected and pCharacteristic.
- *
- * @param data Data to be sent (unsigned char*)
- * @param len Length of data (size_t)
- */
-void sendData(const char *data)
+void telemetryTask(void *parameters)
 {
-    if (deviceConnected)
+    while (1)
     {
-        pCharacteristic->setValue((uint8_t *)data, strlen(data));
-        pCharacteristic->notify();
+        if (!pauseTelemetry)
+        {
+            sendData(BMSDummy);
+            sendData(sensorDummy);
+        }
+        delay(1000);
     }
 }
 
@@ -172,13 +218,12 @@ void setup()
     pAdvertising->setMinPreferred(0x0); // set value to 0x00 to not advertise this parameter
     BLEDevice::startAdvertising();
     Serial.println("Waiting a client connection to notify...");
+
+    xTaskCreate(telemetryTask, "telemetry", 2048, NULL, 10, NULL);
 }
 
 void loop()
 {
-    sendData(BMSDummy);
-    sendData(sensorDummy);
-    delay(1000);
     // disconnecting
     if (!deviceConnected && oldDeviceConnected)
     {
