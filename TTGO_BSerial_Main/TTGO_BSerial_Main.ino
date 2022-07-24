@@ -50,6 +50,10 @@ BLECharacteristic *pCharacteristic = NULL;
 StaticJsonDocument<600> incoming;
 StaticJsonDocument<32> errorDoc;
 
+TaskHandle_t i2cTask;
+TaskHandle_t bmsTask;
+TaskHandle_t telemetryTask;
+
 float A3_offset = 0.060;
 
 char telemetryJSON[1024];
@@ -58,6 +62,7 @@ char sensorTelemetry[512];
 char errorJSON[32];
 
 bool vehicleState = false;
+bool sendTelemetry = true;
 bool deviceConnected = false;
 bool oldDeviceConnected = false;
 
@@ -91,6 +96,34 @@ void mergeJSON(JsonObject dest, JsonObjectConst src)
     for (auto kvp : src)
     {
         dest[kvp.key()] = kvp.value();
+    }
+}
+
+void transmitTelemetry(void *parameters)
+{
+    while (true)
+    {
+        ts.getTelemetry();
+        getBMSTelemetry();
+        if (sendTelemetry)
+        {
+            memset(BMSTelemetry, 0, 512);
+            memset(sensorTelemetry, 0, 512);
+            memset(telemetryJSON, 0, 1024);
+
+            serializeJsonPretty(BMSDoc, BMSTelemetry);
+            BMSTelemetry[strlen(BMSTelemetry)] = '\n';
+            serializeJsonPretty(ts.telemetryDoc, sensorTelemetry);
+            sensorTelemetry[strlen(sensorTelemetry)] = '\n';
+            sendData(BMSTelemetry);
+            sendData(sensorTelemetry);
+
+            mergeJSON(BMSDoc.as<JsonObject>(), ts.telemetryDoc.as<JsonObject>());
+            serializeJson(BMSDoc, telemetryJSON);
+
+            ESP_LOGI("TAG", "%s", telemetryJSON);
+        }
+        delay(1000);
     }
 }
 
@@ -249,6 +282,21 @@ class MyCallbacks : public BLECharacteristicCallbacks
                         return;
                     }
                 }
+                data = incoming["telemetry"];
+                if (!data.isNull())
+                {
+                    sendTelemetry = data.as<bool>();
+                    sendResponse(ALL_OK);
+                    return;
+                }
+
+                data = incoming["resetMPU"];
+                if (!data.isNull())
+                {
+                    ts.resetMPU = true;
+                    sendResponse(ALL_OK);
+                    return;
+                }
                 sendResponse(INVALID);
             }
         }
@@ -270,7 +318,7 @@ void setup()
     ts.initialiseTelemetry();
 
     Serial.begin(115200);
-    SerialGPS.begin(9800, SWSERIAL_8N1, GPS_RX, GPS_TX);
+    SerialGPS.begin(9600, SWSERIAL_8N1, GPS_RX, GPS_TX);
 
     SerialBMS.begin(19200, SERIAL_8N1, BMS_RX, BMS_TX);
     initBMS();
@@ -299,37 +347,19 @@ void setup()
 
     xTaskCreate([](void *parameters)
                 { ts.handleI2CTelemetry(parameters); },
-                "I2C Scanner", 2048, NULL, 10, NULL);
+                "I2C Scanner", 2048, NULL, 10, &i2cTask);
 
-    xTaskCreate([](void *parameters)
-                { ts.handleGPS(parameters); },
-                "GPS Handler", 2048, NULL, 12, NULL);
+    xTaskCreate(updateBMSTelemetry, "BMS Telemetry", 2048, NULL, 15, &bmsTask);
 
-    xTaskCreate(updateBMSTelemetry, "BMS Telemetry", 2048, NULL, 15, NULL);
+    xTaskCreatePinnedToCore(transmitTelemetry, "Telemetry transmitter", 4096, NULL, 10, &telemetryTask, 1);
 
     ESP_LOGI("TAG", "Task Generation Complete");
 }
 
 void loop()
 {
-    ts.getTelemetry();
-    getBMSTelemetry();
-
-    memset(BMSTelemetry, 0, 512);
-    memset(sensorTelemetry, 0, 512);
-    memset(telemetryJSON, 0, 1024);
-
-    serializeJsonPretty(BMSDoc, BMSTelemetry);
-    BMSTelemetry[strlen(BMSTelemetry)] = '\n';
-    serializeJsonPretty(ts.telemetryDoc, sensorTelemetry);
-    sensorTelemetry[strlen(sensorTelemetry)] = '\n';
-    sendData(BMSTelemetry);
-    sendData(sensorTelemetry);
-
-    mergeJSON(BMSDoc.as<JsonObject>(), ts.telemetryDoc.as<JsonObject>());
-    serializeJson(BMSDoc, telemetryJSON);
-
-    ESP_LOGI("TAG", "%s", telemetryJSON);
+    if (SerialGPS.available())
+        gps.encode(SerialGPS.read());
 
     if ((batteryState == 2 || ts.volts_ev_batt < 20) && vehicleState)
     {
@@ -351,5 +381,4 @@ void loop()
         // do stuff here on connecting
         oldDeviceConnected = deviceConnected;
     }
-    delay(1000);
 }

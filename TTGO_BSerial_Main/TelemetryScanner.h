@@ -29,6 +29,7 @@ public:
     LEDHandler *led;
     StaticJsonDocument<512> telemetryDoc;
 
+    bool resetMPU = false;
     bool enableMPU = true;
     bool enableGPS = true;
     bool enableADS = true;
@@ -56,6 +57,26 @@ public:
         fs.connectSDCard();
         initialiseMPU6050();
         initialiseADS();
+    }
+
+    /**
+     * @brief Set offsets for the MPU 6050
+     *
+     */
+    void setMPUOffsets(bool deleteFile)
+    {
+        if (deleteFile)
+            fs.deleteFile("/MPUOffsets.txt");
+        mpu->calcOffsets();
+        MPUData["accXOff"] = mpu->getAccXoffset();
+        MPUData["accYOff"] = mpu->getAccYoffset();
+        MPUData["accZOff"] = mpu->getAccZoffset();
+        MPUData["gyroXOff"] = mpu->getGyroXoffset();
+        MPUData["gyroYOff"] = mpu->getGyroYoffset();
+        MPUData["gyroZOff"] = mpu->getGyroZoffset();
+        memset(c, 0, 1024);
+        serializeJson(MPUData, c);
+        fs.writeFile("/MPUOffsets.txt", c);
     }
 
     /**
@@ -93,16 +114,7 @@ public:
 
         if (!fs.readFile("/MPUOffsets.txt", c, 1024))
         {
-            mpu->calcOffsets();
-            MPUData["accXOff"] = mpu->getAccXoffset();
-            MPUData["accYOff"] = mpu->getAccYoffset();
-            MPUData["accZOff"] = mpu->getAccZoffset();
-            MPUData["gyroXOff"] = mpu->getGyroXoffset();
-            MPUData["gyroYOff"] = mpu->getGyroYoffset();
-            MPUData["gyroZOff"] = mpu->getGyroZoffset();
-            memset(c, 0, 1024);
-            serializeJson(MPUData, c);
-            fs.writeFile("/MPUOffsets.txt", c);
+            setMPUOffsets(false);
         }
         else
         {
@@ -137,23 +149,15 @@ public:
         }
     }
 
-    void handleGPS(void *parameters)
-    {
-        if (!enableGPS)
-            return;
-        while (true)
-        {
-            while (gpsSerial->available())
-                gps->encode(gpsSerial->read());
-            delay(10);
-            yield();
-        }
-    }
-
     void handleI2CTelemetry(void *parameters)
     {
         while (1)
         {
+            if (resetMPU)
+            {
+                setMPUOffsets(true);
+                resetMPU = false;
+            }
             if (enableADS)
             {
                 adc0 = ads->readADC_SingleEnded(0);
@@ -168,7 +172,7 @@ public:
 
                 volts_bkp_batt = calc_batt_voltage(volts3);
                 volts_ev_batt = calc_ev_voltage(volts1) - 0.80;
-                degree_celcius = calc_ntc_temp(adc2);
+                degree_celcius = calc_ntc_temp(volts2);
                 current = ev_current(adc0);
 
                 led->batteryBar(*batteryPercent);
@@ -200,13 +204,13 @@ public:
         }
         if (enableGPS)
         {
-            ESP_LOGI("Telemetry", "GPS Chars Processed: %lu", gps->charsProcessed());
+            ESP_LOGI("Telemetry", "GPS Chars Processed: %lu, %f, %f", gps->charsProcessed(), gps->location.lat(), gps->location.lng());
             telemetryDoc["Latitude"] = gps->location.lat();
             telemetryDoc["Longitude"] = gps->location.lng();
         }
         if (enableMPU)
         {
-            ESP_LOGI("Telemetry", "Angles: %f %f\nAccl: %f %f %f\nGyro: %f %f %f", mpu->getAngleX(), mpu->getAngleY(), mpu->getAccX(), mpu->getAccY(), mpu->getAccZ(), mpu->getGyroX(), mpu->getGyroY(), mpu->getGyroZ());
+            ESP_LOGI("Telemetry", "Angles: %f %f\nAccl: %f %f %f\nGyro: %f %f %f\nMPU Temp: %f", mpu->getAngleX(), mpu->getAngleY(), mpu->getAccX(), mpu->getAccY(), mpu->getAccZ(), mpu->getGyroX(), mpu->getGyroY(), mpu->getGyroZ(), mpu->getTemp());
             telemetryDoc["pitch"] = mpu->getAngleX();
             telemetryDoc["roll"] = mpu->getAngleY();
         }
@@ -220,6 +224,8 @@ private:
     const float A3_offset = 0.060;
     const float bakBatR1 = 96.31;
     const float bakBatR2 = 19.70;
+
+    char c[1024];
 
     bool SDMountStatus = false;
 
@@ -238,14 +244,12 @@ private:
         return vin;
     }
 
-    float calc_ntc_temp(int vout)
+    float calc_ntc_temp(float vout)
     {
-        int Vo;
-        float R1 = 11400;
+        float R1 = 10000;
         float logR2, R2, T;
         const float c1 = 1.009249522e-03, c2 = 2.378405444e-04, c3 = 2.019202697e-07;
-        Vo = vout;
-        R2 = R1 * (1023.0 / (float)Vo - 1.0);
+        R2 = R1 * (3.3 / vout - 1.0);
         logR2 = log(R2);
         T = (1.0 / (c1 + c2 * logR2 + c3 * logR2 * logR2 * logR2));
         T = -T + 273.15;
@@ -256,5 +260,4 @@ private:
     {
         return ((adc - 8688) * 0.3052 / 40.00);
     }
-    char c[1024];
 };
