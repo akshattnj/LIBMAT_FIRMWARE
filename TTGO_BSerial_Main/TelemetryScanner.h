@@ -25,7 +25,6 @@ public:
     MPU6050 *mpu;
     TinyGPSPlus *gps;
     Adafruit_ADS1115 *ads;
-    SoftwareSerial *gpsSerial;
     LEDHandler *led;
     StaticJsonDocument<512> telemetryDoc;
 
@@ -38,11 +37,10 @@ public:
     float volts0, volts1, volts2, volts3, volts_bkp_batt, volts_ev_batt, degree_celcius, current;
     float *batteryPercent;
 
-    TelemetryScanner(MPU6050 *mpuPointer, TinyGPSPlus *gpsPointer, SoftwareSerial *gpsSer, Adafruit_ADS1115 *adsPointer, LEDHandler *ledPointer, float *remainingPower)
+    TelemetryScanner(MPU6050 *mpuPointer, TinyGPSPlus *gpsPointer, Adafruit_ADS1115 *adsPointer, LEDHandler *ledPointer, float *remainingPower)
     {
         mpu = mpuPointer;
         gps = gpsPointer;
-        gpsSerial = gpsSer;
         ads = adsPointer;
         led = ledPointer;
         batteryPercent = remainingPower;
@@ -196,23 +194,23 @@ public:
         telemetryDoc.clear();
         if (enableADS)
         {
-            ESP_LOGI("Telemetry", "Current Draw(0) : %0.2f A\nEV Voltage(1): %0.2f V\nTemprature(2) : %0.2f °C\nBackup batt. Voltage(3) : %0.2f V\nRaw Data: %u %u %u %u", current, volts_ev_batt, degree_celcius, volts_bkp_batt, adc0, adc1, adc2, adc3);
-            telemetryDoc["CurrentDraw(ADC)"] = current;
-            telemetryDoc["EV Voltage(ADC)"] = volts_ev_batt;
-            telemetryDoc["Temprature(ADC)"] = degree_celcius;
-            telemetryDoc["BackupVoltage(ADC)"] = volts_bkp_batt;
+            ESP_LOGD("Telemetry", "Current Draw(0) : %0.2f A\nEV Voltage(1): %0.2f V\nTemprature(2) : %0.2f °C\nBackup batt. Voltage(3) : %0.2f V\nRaw Data: %u %u %u %u", current, volts_ev_batt, degree_celcius, volts_bkp_batt, adc0, adc1, adc2, adc3);
+            telemetryDoc["acd"] = round2(current);
+            telemetryDoc["aev"] = round2(volts_ev_batt);
+            telemetryDoc["atm"] = round2(degree_celcius);
+            telemetryDoc["abv"] = round2(volts_bkp_batt);
         }
         if (enableGPS)
         {
-            ESP_LOGI("Telemetry", "GPS Chars Processed: %lu, %f, %f", gps->charsProcessed(), gps->location.lat(), gps->location.lng());
-            telemetryDoc["Latitude"] = gps->location.lat();
-            telemetryDoc["Longitude"] = gps->location.lng();
+            ESP_LOGD("Telemetry", "GPS Chars Processed: %lu, %f, %f", gps->charsProcessed(), gps->location.lat(), gps->location.lng());
+            telemetryDoc["lat"] = gps->location.lat();
+            telemetryDoc["lon"] = gps->location.lng();
         }
         if (enableMPU)
         {
-            ESP_LOGI("Telemetry", "Angles: %f %f\nAccl: %f %f %f\nGyro: %f %f %f\nMPU Temp: %f", mpu->getAngleX(), mpu->getAngleY(), mpu->getAccX(), mpu->getAccY(), mpu->getAccZ(), mpu->getGyroX(), mpu->getGyroY(), mpu->getGyroZ(), mpu->getTemp());
-            telemetryDoc["pitch"] = mpu->getAngleX();
-            telemetryDoc["roll"] = mpu->getAngleY();
+            ESP_LOGD("Telemetry", "Angles: %f %f\nAccl: %f %f %f\nGyro: %f %f %f\nMPU Temp: %f", mpu->getAngleX(), mpu->getAngleY(), mpu->getAccX(), mpu->getAccY(), mpu->getAccZ(), mpu->getGyroX(), mpu->getGyroY(), mpu->getGyroZ(), mpu->getTemp());
+            telemetryDoc["pit"] = round2(mpu->getAngleX());
+            telemetryDoc["rol"] = round2(mpu->getAngleY());
         }
     }
 
@@ -259,5 +257,10 @@ private:
     float ev_current(float adc)
     {
         return ((adc - 8688) * 0.3052 / 40.00);
+    }
+
+    double round2(double value)
+    {
+        return (int)(value * 100 + 0.5) / 100.0;
     }
 };

@@ -18,7 +18,8 @@ float dischargingCurrent;
 float totalCellVoltage;
 float remainingPower;
 
-StaticJsonDocument<1024> BMSDoc;
+StaticJsonDocument<512> BMSGeneral;
+StaticJsonDocument<512> BMSDetailed;
 ModbusClientRTU RS485(Serial1);
 Error err;
 uint8_t BMSSlaveID = 2;
@@ -133,7 +134,7 @@ void updateBMSTelemetry(void *parameters)
         else
         {
             batteryState = 0;
-            ESP_LOGI("BMS Handler", "Battery disconnected");
+            // ESP_LOGI("BMS Handler", "Battery disconnected");
         }
 
         err = RS485.addRequest(0x02, BMSSlaveID, READ_HOLD_REGISTER, 0x9C41, 0x001A);
@@ -151,21 +152,26 @@ void updateBMSTelemetry(void *parameters)
     }
 }
 
+double round2(double value)
+{
+    return (int)(value * 100 + 0.5) / 100.0;
+}
+
 void getBMSTelemetry()
 {
 
-    ESP_LOGI("TAG", "Cells\n%0.2f %0.2f %0.2f %0.2f %0.2f %0.2f %0.2f %0.2f %0.2f %0.2f %0.2f %0.2f %0.2f %0.2f %0.2f",
+    ESP_LOGD("TAG", "Cells\n%0.2f %0.2f %0.2f %0.2f %0.2f %0.2f %0.2f %0.2f %0.2f %0.2f %0.2f %0.2f %0.2f %0.2f %0.2f",
              cellVolts[0], cellVolts[1], cellVolts[2], cellVolts[3], cellVolts[4], cellVolts[5], cellVolts[6], cellVolts[7],
              cellVolts[8], cellVolts[9], cellVolts[10], cellVolts[11], cellVolts[12], cellVolts[13], cellVolts[14]);
-    ESP_LOGI("TAG", "Temperature\n%d %d %d %d %d %d", temperature[0], temperature[1], temperature[2],
+    ESP_LOGD("TAG", "Temperature\n%d %d %d %d %d %d", temperature[0], temperature[1], temperature[2],
              temperature[3], temperature[4], temperature[5]);
-    ESP_LOGI("TAG", "Current : %0.2f\nCapah : %0.2f\nState : %d", current, capah, BMSState);
-    ESP_LOGI("TAG", "Charging V : %0.2fV\nCharging A : %0.2fA\nDischarging V : %0.2fV\nDischarging A : %0.2fA",
+    ESP_LOGD("TAG", "Current : %0.2f\nCapah : %0.2f\nState : %d", current, capah, BMSState);
+    ESP_LOGD("TAG", "Charging V : %0.2fV\nCharging A : %0.2fA\nDischarging V : %0.2fV\nDischarging A : %0.2fA",
              chargingVoltage, chargingCurrent, dischargingVoltage, dischargingCurrent);
-    ESP_LOGI("TAG", "Total Cell Voltage: %0.2f\nRemaining: %0.2f", totalCellVoltage, remainingPower);
+    ESP_LOGD("TAG", "Total Cell Voltage: %0.2f\nRemaining: %0.2f", totalCellVoltage, remainingPower);
 
-    BMSDoc.clear();
-    JsonArray cellVoltages = BMSDoc.createNestedArray("Cell_Voltages");
+    BMSDetailed.clear();
+    JsonArray cellVoltages = BMSDetailed.createNestedArray("clv");
     cellVoltages.add(cellVolts[0]);
     cellVoltages.add(cellVolts[1]);
     cellVoltages.add(cellVolts[2]);
@@ -181,20 +187,22 @@ void getBMSTelemetry()
     cellVoltages.add(cellVolts[12]);
     cellVoltages.add(cellVolts[13]);
     cellVoltages.add(cellVolts[14]);
-    JsonArray temperatures = BMSDoc.createNestedArray("Temperature");
+    JsonArray temperatures = BMSDetailed.createNestedArray("btm");
     temperatures.add(temperature[0]);
     temperatures.add(temperature[1]);
     temperatures.add(temperature[2]);
     temperatures.add(temperature[3]);
     temperatures.add(temperature[4]);
     temperatures.add(temperature[5]);
-    BMSDoc["Current"] = current;
-    BMSDoc["Capacity"] = capah;
-    BMSDoc["BMS_State"] = BMSState;
-    BMSDoc["Charging_V"] = chargingVoltage;
-    BMSDoc["Charging_I"] = chargingCurrent;
-    BMSDoc["Discharging_V"] = dischargingVoltage;
-    BMSDoc["Discharging_C"] = dischargingCurrent;
-    BMSDoc["Voltage"] = totalCellVoltage;
-    BMSDoc["Battery_Percent"] = remainingPower;
+
+    BMSGeneral.clear();
+    BMSGeneral["cur"] = round2(current);
+    BMSGeneral["cap"] = round2(capah);
+    BMSGeneral["bst"] = BMSState;
+    BMSGeneral["cav"] = round2(chargingVoltage);
+    BMSGeneral["cai"] = round2(chargingCurrent);
+    BMSGeneral["div"] = round2(dischargingVoltage);
+    BMSGeneral["dii"] = round2(dischargingCurrent);
+    BMSGeneral["tov"] = round2(totalCellVoltage);
+    BMSGeneral["ba%"] = round2(remainingPower);
 }

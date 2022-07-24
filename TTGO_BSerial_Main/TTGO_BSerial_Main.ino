@@ -1,21 +1,3 @@
-#define LED_PIN 33
-#define BUZZER_PIN 32
-#define NUMPIXELS 10
-
-#define I2C_SDA 21
-#define I2C_SCL 22
-
-#define GPS_RX 34
-#define GPS_TX 14
-
-#define BMS_RX 13
-#define BMS_TX 15
-
-#define BAT_LOCK 23
-#define BAT_CHK 36
-
-#define IGNITION 19
-
 #define SerialDebug Serial
 #define SerialBMS Serial1
 #define SerialGSM Serial2
@@ -41,38 +23,50 @@
 #include "BMSHandler.h"
 #include "PowerManagement.h"
 #include "GSMHandler.h"
-#include "Definations.h"
-
-Adafruit_NeoPixel pixels(NUMPIXELS, LED_PIN, NEO_GRB + NEO_KHZ800);
-Adafruit_ADS1115 ads;
-MPU6050 mpu(Wire);
-TinyGPSPlus gps;
-SoftwareSerial SerialGPS;
-LEDHandler led(&pixels);
-TelemetryScanner ts(&mpu, &gps, &SerialGPS, &ads, &led, &remainingPower);
-AXP20X_Class axp;
-PowerManagement power(&axp);
-GSMHandler GSM(&SerialDebug, &SerialGSM);
-BLEServer *pServer = NULL;
-BLECharacteristic *pCharacteristic = NULL;
-StaticJsonDocument<600> incoming;
-StaticJsonDocument<32> errorDoc;
-
-TaskHandle_t i2cTask;
-TaskHandle_t bmsTask;
-TaskHandle_t telemetryTask;
 
 float A3_offset = 0.060;
 
-char telemetryJSON[1024];
-char BMSTelemetry[512];
-char sensorTelemetry[512];
+char BMSTelemetryGeneral[256];
+char BMSTelemetryDetailed[256];
+char sensorTelemetry[256];
 char errorJSON[32];
 
 bool vehicleState = false;
 bool sendTelemetry = true;
 bool deviceConnected = false;
 bool oldDeviceConnected = false;
+
+// I2C devices
+Adafruit_ADS1115 ads;
+MPU6050 mpu(Wire);
+
+// GPS related
+TinyGPSPlus gps;
+SoftwareSerial SerialGPS;
+
+// Neopixel Related
+Adafruit_NeoPixel pixels(NUMPIXELS, LED_PIN, NEO_GRB + NEO_KHZ800);
+LEDHandler led(&pixels);
+
+// Telemetry
+TelemetryScanner ts(&mpu, &gps, &ads, &led, &remainingPower);
+
+// GSM Related
+AXP20X_Class axp;
+PowerManagement power(&axp);
+GSMHandler GSM(&SerialDebug, &SerialGSM, BMSTelemetryDetailed, BMSTelemetryGeneral, sensorTelemetry, true);
+
+// BLE
+BLEServer *pServer = NULL;
+BLECharacteristic *pCharacteristic = NULL;
+
+// JSON Docs
+StaticJsonDocument<600> incoming;
+StaticJsonDocument<32> errorDoc;
+
+TaskHandle_t i2cTask;
+TaskHandle_t bmsTask;
+TaskHandle_t telemetryTask;
 
 /**
  * @brief Send data via BLE.
@@ -115,21 +109,19 @@ void transmitTelemetry(void *parameters)
         getBMSTelemetry();
         if (sendTelemetry)
         {
-            memset(BMSTelemetry, 0, 512);
-            memset(sensorTelemetry, 0, 512);
-            memset(telemetryJSON, 0, 1024);
+            memset(BMSTelemetryDetailed, 0, 256);
+            memset(BMSTelemetryGeneral, 0, 256);
+            memset(sensorTelemetry, 0, 256);
 
-            serializeJsonPretty(BMSDoc, BMSTelemetry);
-            BMSTelemetry[strlen(BMSTelemetry)] = '\n';
-            serializeJsonPretty(ts.telemetryDoc, sensorTelemetry);
+            serializeJson(BMSDetailed, BMSTelemetryDetailed);
+            BMSTelemetryDetailed[strlen(BMSTelemetryDetailed)] = '\n';
+            serializeJson(BMSGeneral, BMSTelemetryGeneral);
+            BMSTelemetryGeneral[strlen(BMSTelemetryGeneral)] = '\n';
+            serializeJson(ts.telemetryDoc, sensorTelemetry);
             sensorTelemetry[strlen(sensorTelemetry)] = '\n';
-            sendData(BMSTelemetry);
+            sendData(BMSTelemetryGeneral);
+            sendData(BMSTelemetryDetailed);
             sendData(sensorTelemetry);
-
-            mergeJSON(BMSDoc.as<JsonObject>(), ts.telemetryDoc.as<JsonObject>());
-            serializeJson(BMSDoc, telemetryJSON);
-
-            ESP_LOGI("TAG", "%s", telemetryJSON);
         }
         delay(1000);
     }
@@ -323,13 +315,15 @@ void setup()
     led.resetLED();
 
     Wire.begin(I2C_SDA, I2C_SCL);
+    power.powerSetup();
     ts.initialiseTelemetry();
 
-    Serial.begin(115200);
-    SerialGPS.begin(9600, SWSERIAL_8N1, GPS_RX, GPS_TX);
-
+    SerialDebug.begin(115200);
+    SerialGSM.begin(115200, SERIAL_8N1, MODEM_RX, MODEM_TX);
     SerialBMS.begin(19200, SERIAL_8N1, BMS_RX, BMS_TX);
     initBMS();
+
+    SerialGPS.begin(9600, SWSERIAL_8N1, GPS_RX, GPS_TX);
 
     ESP_LOGI("TAG", "Serial Setup Complete");
 
@@ -361,6 +355,14 @@ void setup()
 
     xTaskCreatePinnedToCore(transmitTelemetry, "Telemetry transmitter", 4096, NULL, 10, &telemetryTask, 1);
 
+    xTaskCreatePinnedToCore([](void *parameters)
+                            { ESP_LOGI("TAG", "GSM response"); GSM.GSMResponseScan(parameters); },
+                            "GSM Response", 2048, NULL, 10, NULL, 0);
+
+    xTaskCreatePinnedToCore([](void *parameters)
+                            { ESP_LOGI("TAG", "GSM handler"); GSM.handleGSM(parameters); },
+                            "GSM Handle", 4096, NULL, 10, NULL, 1);
+
     ESP_LOGI("TAG", "Task Generation Complete");
 }
 
@@ -380,7 +382,7 @@ void loop()
     {
         delay(500);                  // give the bluetooth stack the chance to get things ready
         pServer->startAdvertising(); // restart advertising
-        Serial.println("start advertising");
+        ESP_LOGI("TAG", "Start advertising");
         oldDeviceConnected = deviceConnected;
     }
     // connecting
