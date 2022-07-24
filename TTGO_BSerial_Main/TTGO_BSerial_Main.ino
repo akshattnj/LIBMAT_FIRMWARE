@@ -16,7 +16,9 @@
 
 #define IGNITION 19
 
+#define SerialDebug Serial
 #define SerialBMS Serial1
+#define SerialGSM Serial2
 
 #define DEVICE_NAME "ESP_32-COM4"
 #define SERVICE_UUID "4fafc201-1fb5-459e-8fcc-c5c9c331914b"
@@ -28,6 +30,7 @@
 #include <MPU6050_light.h>
 #include <TinyGPSPlus.h>
 #include <SoftwareSerial.h>
+#include <axp20x.h>
 #include <BLEDevice.h>
 #include <BLEServer.h>
 #include <BLEUtils.h>
@@ -36,7 +39,9 @@
 
 #include "TelemetryScanner.h"
 #include "BMSHandler.h"
-#include "ErrorCodes.h"
+#include "PowerManagement.h"
+#include "GSMHandler.h"
+#include "Definations.h"
 
 Adafruit_NeoPixel pixels(NUMPIXELS, LED_PIN, NEO_GRB + NEO_KHZ800);
 Adafruit_ADS1115 ads;
@@ -45,6 +50,9 @@ TinyGPSPlus gps;
 SoftwareSerial SerialGPS;
 LEDHandler led(&pixels);
 TelemetryScanner ts(&mpu, &gps, &SerialGPS, &ads, &led, &remainingPower);
+AXP20X_Class axp;
+PowerManagement power(&axp);
+GSMHandler GSM(&SerialDebug, &SerialGSM);
 BLEServer *pServer = NULL;
 BLECharacteristic *pCharacteristic = NULL;
 StaticJsonDocument<600> incoming;
