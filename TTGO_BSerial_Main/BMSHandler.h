@@ -165,7 +165,6 @@ void getBMSTelemetry()
     ESP_LOGI("TAG", "Total Cell Voltage: %0.2f\nRemaining: %0.2f", totalCellVoltage, remainingPower);
 
     BMSDoc.clear();
-    BMSDoc["type"] = 1;
     JsonArray cellVoltages = BMSDoc.createNestedArray("Cell_Voltages");
     cellVoltages.add(cellVolts[0]);
     cellVoltages.add(cellVolts[1]);

@@ -76,6 +76,7 @@ public:
         pixels->fill(pixels->Color(0, 0, 255), 0, pixels->numPixels());
         pixels->show();
         delay(3000);
+        pixels->clear();
         LEDLock = false;
     }
 

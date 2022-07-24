@@ -1,0 +1,9 @@
+#define ALL_OK 0
+#define NO_BATTERY 1
+#define BAD_BATTERY_SEATING 2
+#define BATTERY_CHARGING 3
+#define BATTERY_CABLE_ATTACHED 4
+#define VEHICLE_ON 5
+#define VEHICLE_OFF 6
+#define JSON_ERROR 98
+#define INVALID 99

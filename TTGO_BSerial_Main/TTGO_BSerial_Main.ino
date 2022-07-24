@@ -18,7 +18,7 @@
 
 #define SerialBMS Serial1
 
-#define DEVICE_NAME "ESP_32-Prototype"
+#define DEVICE_NAME "ESP_32-COM4"
 #define SERVICE_UUID "4fafc201-1fb5-459e-8fcc-c5c9c331914b"
 #define CHARACTERISTIC_UUID "beb5483e-36e1-4688-b7f5-ea07361b26a8"
 
@@ -36,9 +36,9 @@
 
 #include "TelemetryScanner.h"
 #include "BMSHandler.h"
+#include "ErrorCodes.h"
 
 Adafruit_NeoPixel pixels(NUMPIXELS, LED_PIN, NEO_GRB + NEO_KHZ800);
-BluetoothSerial SerialBT;
 Adafruit_ADS1115 ads;
 MPU6050 mpu(Wire);
 TinyGPSPlus gps;
@@ -47,25 +47,29 @@ LEDHandler led(&pixels);
 TelemetryScanner ts(&mpu, &gps, &SerialGPS, &ads, &led, &remainingPower);
 BLEServer *pServer = NULL;
 BLECharacteristic *pCharacteristic = NULL;
+StaticJsonDocument<600> incoming;
+StaticJsonDocument<32> errorDoc;
 
 float A3_offset = 0.060;
-int received;      // received value will be stored in this variable
-char receivedChar; // received value will be stored as CHAR in this variable
+
 char telemetryJSON[1024];
 char BMSTelemetry[512];
 char sensorTelemetry[512];
-const char turnON = '1';
-const char turnOFF = '0';
-const char lockON = '3';
+char errorJSON[32];
+
 bool vehicleState = false;
 bool deviceConnected = false;
 bool oldDeviceConnected = false;
 
 /**
- * @brief Send data via BLE. Uses global variables deviceConnected and pCharacteristic.
+ * @brief Send data via BLE.
+ * Global variables used:
+ * - deviceConnected
+ * - pCharacteristic
  *
  * @param data Data to be sent (unsigned char*)
  * @param len Length of data (size_t)
+ *
  */
 void sendData(char *data)
 {
@@ -76,13 +80,44 @@ void sendData(char *data)
     }
 }
 
+/**
+ * @brief Merge JSON documents
+ *
+ * @param dest The destination JSON object
+ * @param src The source JSON object
+ */
+void mergeJSON(JsonObject dest, JsonObjectConst src)
+{
+    for (auto kvp : src)
+    {
+        dest[kvp.key()] = kvp.value();
+    }
+}
+
 class MyServerCallbacks : public BLEServerCallbacks
 {
+    /**
+     * @brief Callback function for connect event
+     * Global variables used:
+     * - deviceConnected
+     *
+     * @param pServer
+     */
     void onConnect(BLEServer *pServer)
     {
         deviceConnected = true;
     };
 
+    /**
+     * @brief Callback event for disconnect event
+     * Global variables used:
+     * - deviceConnected
+     * - vehicleState
+     * - led
+     * - PIN IGNITION
+     *
+     * @param pServer
+     */
     void onDisconnect(BLEServer *pServer)
     {
         vehicleState = false;
@@ -93,13 +128,27 @@ class MyServerCallbacks : public BLEServerCallbacks
 };
 
 /**
+ * @brief Sends response
+ *
+ * @param ERROR_CODE
+ */
+void sendResponse(int ERROR_CODE)
+{
+    errorDoc.clear();
+    errorDoc["error"] = ERROR_CODE;
+    serializeJson(errorDoc, errorJSON);
+    errorJSON[strlen(errorJSON)] = '\n';
+    sendData(errorJSON);
+}
+
+/**
  * @brief Extends class BLECharacteristicCallbacks and implements the method onWrite.
  *
  */
 class MyCallbacks : public BLECharacteristicCallbacks
 {
     /**
-     * @brief What to do when data is written to the BLE.
+     * @brief Callback function for write event on BLE
      *
      * @param pCharacteristic Input used by library.
      */
@@ -110,57 +159,97 @@ class MyCallbacks : public BLECharacteristicCallbacks
         if (rxValue.length() > 0)
         {
             ESP_LOGI("TAG", "%s", rxValue);
-            for (int i = 0; i < rxValue.length(); i++)
+
+            incoming.clear();
+            DeserializationError error = deserializeJson(incoming, rxValue);
+            if (error)
+            {
+                ESP_LOGE("TAG", "deserializeJson() failed: %s", error.c_str());
+                sendResponse(JSON_ERROR);
+                return;
+            }
+            else
             {
                 bool pinStatus = digitalRead(BAT_CHK);
-                ESP_LOGI("TAG", "%d", rxValue[i]);
-                if (rxValue[i] == turnON && ts.volts_ev_batt > 30 && pinStatus)
+                JsonVariant data = incoming["lock"];
+                if (!data.isNull())
                 {
-                    vehicleState = true;
-                    sendData("Cycle Unlocked:\n");
-                    ESP_LOGI("TAG", "Cycle Unlocked:");
-                    digitalWrite(IGNITION, HIGH);
-                    led.vehicleUnlockAnimation();
+                    bool content = data.as<bool>();
+                    if (content)
+                    {
+                        if (ts.volts_ev_batt > 30 && pinStatus && !vehicleState && batteryState != 2)
+                        {
+                            vehicleState = true;
+                            ESP_LOGI("TAG", "Cycle Unlocked:");
+                            digitalWrite(IGNITION, HIGH);
+                            sendResponse(ALL_OK);
+                            led.vehicleUnlockAnimation();
+                            return;
+                        }
+                        else if (vehicleState)
+                        {
+                            sendResponse(VEHICLE_ON);
+                            return;
+                        }
+                        else if (ts.volts_ev_batt < 30)
+                        {
+                            sendResponse(NO_BATTERY);
+                            return;
+                        }
+                        else if (!pinStatus)
+                        {
+                            sendResponse(BAD_BATTERY_SEATING);
+                            return;
+                        }
+                        else if (batteryState == 2)
+                        {
+                            sendResponse(BATTERY_CHARGING);
+                            return;
+                        }
+                    }
+                    else
+                    {
+                        if (vehicleState)
+                        {
+                            vehicleState = false;
+                            sendData("Cycle Locked:\n");
+                            ESP_LOGI("TAG", "Cycle Locked:");
+                            digitalWrite(IGNITION, LOW);
+                            sendResponse(ALL_OK);
+                            led.vehicleLockAnimation();
+                            return;
+                        }
+                        else
+                        {
+                            sendResponse(VEHICLE_OFF);
+                            return;
+                        }
+                    }
                 }
-                else if (rxValue[i] == turnON && ts.volts_ev_batt < 30)
+                data = incoming["battery"];
+                if (!data.isNull())
                 {
-                    sendData("{\"err\":\"Please plug in battery before attempting to start the vehicle\"}");
+                    if (ts.volts_ev_batt < 30 && !vehicleState)
+                    {
+                        sendResponse(ALL_OK);
+                        ESP_LOGI("TAG", "Lock OFF:");
+                        digitalWrite(BAT_LOCK, HIGH);
+                        led.batteryUnlockAnimation();
+                        digitalWrite(BAT_LOCK, LOW);
+                        return;
+                    }
+                    else if (vehicleState)
+                    {
+                        sendResponse(VEHICLE_ON);
+                        return;
+                    }
+                    else
+                    {
+                        sendResponse(BATTERY_CABLE_ATTACHED);
+                        return;
+                    }
                 }
-                else if (rxValue[i] == turnON && !pinStatus)
-                {
-                    sendData("{\"err\":\"Error seating battery. Please make sure the battrey is properly inserted into the holder\"}");
-                }
-                else if (rxValue[i] == turnON && batteryState == 2)
-                {
-                    sendData("{\"err\":\"Please do not attempt to start the vehicle while the batery is charging\"}");
-                }
-
-                if (rxValue[i] == turnOFF)
-                {
-                    vehicleState = false;
-                    sendData("Cycle Locked:\n");
-                    ESP_LOGI("TAG", "Cycle Locked:");
-                    digitalWrite(IGNITION, LOW);
-                    led.vehicleLockAnimation();
-                }
-
-                if (rxValue[i] == lockON && ts.volts_ev_batt < 30 && !vehicleState)
-                {
-                    sendData("Battery Unlocked :\n");
-                    ESP_LOGI("TAG", "Lock OFF:");
-                    digitalWrite(BAT_LOCK, HIGH);
-                    led.batteryUnlockAnimation();
-                    digitalWrite(BAT_LOCK, LOW);
-                    pixels.clear();
-                }
-                else if (rxValue[i] == lockON && vehicleState)
-                {
-                    sendData("{\"err\":\"Please turn off vehicle and remove battery cable before attempting to unlock battery\"}");
-                }
-                else if (rxValue[i] == lockON)
-                {
-                    sendData("{\"err\":\"Please remove battery cable before attempting to unlock battery\"}");
-                }
+                sendResponse(INVALID);
             }
         }
     }
@@ -187,11 +276,6 @@ void setup()
     initBMS();
 
     ESP_LOGI("TAG", "Serial Setup Complete");
-
-    SerialBT.begin("Movio_E-Cycle"); // Bluetooth device name
-    Serial.println("The device started, now you can pair it with bluetooth!");
-    Serial.println("To Unlock send: 1"); // print on serial monitor
-    Serial.println("To Lock send: 2");   // print on serial monitor
 
     pinMode(IGNITION, OUTPUT);
     pinMode(BAT_LOCK, OUTPUT);
@@ -224,14 +308,6 @@ void setup()
     xTaskCreate(updateBMSTelemetry, "BMS Telemetry", 2048, NULL, 15, NULL);
 
     ESP_LOGI("TAG", "Task Generation Complete");
-}
-
-void mergeJSON(JsonObject dest, JsonObjectConst src)
-{
-    for (auto kvp : src)
-    {
-        dest[kvp.key()] = kvp.value();
-    }
 }
 
 void loop()
