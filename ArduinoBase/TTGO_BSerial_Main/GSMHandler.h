@@ -133,7 +133,7 @@ public:
                         break;
                     i++;
                 }
-                ESP_LOGI(GSM, "%s", c);
+                ESP_LOGI("GSM", "%s", c);
                 if (!strncmp(c, "OK", 2))
                     messageOK = true;
                 else if (!strncmp(c, "ERROR", 5))

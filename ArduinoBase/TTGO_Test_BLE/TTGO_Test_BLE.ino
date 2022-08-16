@@ -27,7 +27,7 @@ const uint8_t LEDPin = 12;
 
 const char *package1 = "{\"cur\":0,\"cap\":0,\"bst\":0,\"cav\":0,\"cai\":0,\"div\":0,\"dii\":0,\"tov\":0,\"ba%\":0}";
 const char *package2 = "{\"clv\":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],\"btm\":[0,0,0,0,0,0]}";
-const char *package3 = "{\"acd\":0.12,\"aev\":‑0.79,\"atm\":30.22,\"abv\":10.78,\"lat\":12.89572983,\"lon\":77.66020017,\"pit\":0.00,\"rol\":0.00}";
+const char *package3 = "{\"acd\":0.12,\"aev\":-0.79,\"atm\":30.22,\"abv\":10.78,\"lat\":12.89572983,\"lon\":77.66020017,\"pit\":0.00,\"rol\":0.00}";
 
 #define SERVICE_UUID "4fafc201-1fb5-459e-8fcc-c5c9c331914b"
 #define CHARACTERISTIC_UUID "beb5483e-36e1-4688-b7f5-ea07361b26a8"

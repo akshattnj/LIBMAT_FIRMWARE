@@ -2,7 +2,7 @@
 #define LED_PIN 33
 #define BUZZER_PIN 32
 #define NUMPIXELS 10
-#define GPS_ON 5
+#define GPS_ON 18
 
 #define I2C_SDA 21
 #define I2C_SCL 22

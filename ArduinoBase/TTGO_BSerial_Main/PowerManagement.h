@@ -31,7 +31,7 @@ public:
 
         if (ret == AXP_FAIL)
         {
-            ESP_LOGE(TAG, "AXP Power begin failed");
+            ESP_LOGE("Power", "AXP Power begin failed");
             return false;
         }
 
@@ -46,7 +46,7 @@ public:
         float vbus_v = axp->getVbusVoltage();
         float vbus_c = axp->getVbusCurrent();
         float batt_v = axp->getBattVoltage();
-        ESP_LOGI(TAG, "VBUS:%.2f mV %.2f mA ,BATTERY: %.2f\n", vbus_v, vbus_c, batt_v);
+        ESP_LOGI("Power", "VBUS:%.2f mV %.2f mA ,BATTERY: %.2f\n", vbus_v, vbus_c, batt_v);
 
         return true;
     }
@@ -57,10 +57,10 @@ public:
      */
     void powerSetup()
     {
-        ESP_LOGI("TAG", "Began power setup");
+        ESP_LOGI("Power", "Began power setup");
         while (setupPMU() == false)
             ;
-        ESP_LOGI("TAG", "PMU setup complete");
+        ESP_LOGI("Power", "PMU setup complete");
         pinMode(MODEM_POWER_KEY, OUTPUT);
         pinMode(MODEM_POWER_ON, OUTPUT);
         // Turn on the Modem power first

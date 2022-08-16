@@ -95,20 +95,20 @@ public:
             status = mpu->begin();
             if (status != 0)
             {
-                ESP_LOGE(TAG, "Error in communication with MPU6050. Status code: %d", status);
+                ESP_LOGE("Telemetry", "Error in communication with MPU6050. Status code: %d", status);
                 if (attempts > 4)
                 {
                     ESP_LOGE("Telemetry", "Unable to reach MPU. Please check connections");
                     enableMPU = false;
                     return;
                 }
-                ESP_LOGI(TAG, "Retrying in 2 seconds");
+                ESP_LOGI("Telemetry", "Retrying in 2 seconds");
                 attempts++;
             }
             delay(2000);
             yield();
         }
-        ESP_LOGI(TAG, "MPU6050 connection success. Status: %d", status);
+        ESP_LOGI("Telemetry", "MPU6050 connection success. Status: %d", status);
 
         if (!fs.readFile("/MPUOffsets.txt", c, 1024))
         {
@@ -139,7 +139,7 @@ public:
             attempts++;
             if (attempts > 5)
             {
-                ESP_LOGE("TAG", "Unable to communicate with ADS");
+                ESP_LOGE("Telemetry", "Unable to communicate with ADS");
                 enableADS = false;
                 break;
             }
