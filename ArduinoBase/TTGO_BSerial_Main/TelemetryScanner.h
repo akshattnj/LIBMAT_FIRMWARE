@@ -135,7 +135,7 @@ public:
         uint8_t attempts = 0;
         while (!ads->begin())
         {
-            ESP_LOGE("ADC setup failed. Retrying in 2 sec");
+            ESP_LOGE("Telemetry", "ADC setup failed. Retrying in 2 sec");
             attempts++;
             if (attempts > 5)
             {

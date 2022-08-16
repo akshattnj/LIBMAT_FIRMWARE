@@ -51,7 +51,7 @@ void decodeBatDetail(ModbusMessage msg)
 
 void handleData(ModbusMessage msg, uint32_t token)
 {
-    ESP_LOGI("BMS Handler", "Response: serverID=%d, FC=%d, Token=%08X, length=%d:\n", msg.getServerID(), msg.getFunctionCode(), token, msg.size());
+    ESP_LOGD("BMS Handler", "Response: serverID=%d, FC=%d, Token=%08X, length=%d:\n", msg.getServerID(), msg.getFunctionCode(), token, msg.size());
     for (int i = 0; i < msg.size(); i++)
     {
         Serial.printf("%02X ", msg[i]);
@@ -115,7 +115,7 @@ void updateBMSTelemetry(void *parameters)
             remainingPower = 0;
         }
 
-        delay(500);
+        delay(2500);
 
         if (chargingVoltage > 0 && dischargingVoltage > 0)
         {
@@ -142,13 +142,14 @@ void updateBMSTelemetry(void *parameters)
         {
             ModbusError e(err);
             ESP_LOGE("BMS Handler", "Error creating request: %02X - %s\n", err, (const char *)e);
-            memset(cellVolts, 0, 16);
+            for (int i = 0; i < 16; i++)
+                cellVolts[i] = 0.0;
             current = 0;
             memset(temperature, 0, 6);
             capah = 0;
             BMSState = 0;
         }
-        delay(500);
+        delay(2500);
     }
 }
 
@@ -172,21 +173,21 @@ void getBMSTelemetry()
 
     BMSDetailed.clear();
     JsonArray cellVoltages = BMSDetailed.createNestedArray("clv");
-    cellVoltages.add(cellVolts[0]);
-    cellVoltages.add(cellVolts[1]);
-    cellVoltages.add(cellVolts[2]);
-    cellVoltages.add(cellVolts[3]);
-    cellVoltages.add(cellVolts[4]);
-    cellVoltages.add(cellVolts[5]);
-    cellVoltages.add(cellVolts[6]);
-    cellVoltages.add(cellVolts[7]);
-    cellVoltages.add(cellVolts[8]);
-    cellVoltages.add(cellVolts[9]);
-    cellVoltages.add(cellVolts[10]);
-    cellVoltages.add(cellVolts[11]);
-    cellVoltages.add(cellVolts[12]);
-    cellVoltages.add(cellVolts[13]);
-    cellVoltages.add(cellVolts[14]);
+    cellVoltages.add(round2(cellVolts[0]));
+    cellVoltages.add(round2(cellVolts[1]));
+    cellVoltages.add(round2(cellVolts[2]));
+    cellVoltages.add(round2(cellVolts[3]));
+    cellVoltages.add(round2(cellVolts[4]));
+    cellVoltages.add(round2(cellVolts[5]));
+    cellVoltages.add(round2(cellVolts[6]));
+    cellVoltages.add(round2(cellVolts[7]));
+    cellVoltages.add(round2(cellVolts[8]));
+    cellVoltages.add(round2(cellVolts[9]));
+    cellVoltages.add(round2(cellVolts[10]));
+    cellVoltages.add(round2(cellVolts[11]));
+    cellVoltages.add(round2(cellVolts[12]));
+    cellVoltages.add(round2(cellVolts[13]));
+    cellVoltages.add(round2(cellVolts[14]));
     JsonArray temperatures = BMSDetailed.createNestedArray("btm");
     temperatures.add(temperature[0]);
     temperatures.add(temperature[1]);

@@ -146,7 +146,7 @@ public:
         ESP_LOGI("File Management", "Deleting file %s", path);
         if (SPIFFS.remove(path))
         {
-            ESP_LOGI("Delete Success");
+            ESP_LOGI("File Management", "Delete Success");
             return true;
         }
         else

@@ -309,6 +309,9 @@ void setup()
     pinMode(BUZZER_PIN, OUTPUT);
     digitalWrite(BUZZER_PIN, HIGH);
     pinMode(BAT_CHK, INPUT);
+    pinMode(GPS_ON, OUTPUT);
+
+    digitalWrite(GPS_ON, HIGH);
 
     led.initLED();
     led.LEDLock = true;

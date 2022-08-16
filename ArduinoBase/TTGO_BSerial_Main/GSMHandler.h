@@ -42,17 +42,17 @@ public:
     void handleGSM(void *parameters)
     {
         delay(10000);
-        ESP_LOGI("TAG", "AT");
+        ESP_LOGI("GSM", "AT");
         gsmPort->println("AT");
         waitforOK();
 
         getNetworkStatus();
 
-        ESP_LOGI("TAG", "AT+SAPBR=3,1,\"Contype\",\"GPRS\"");
+        ESP_LOGI("GSM", "AT+SAPBR=3,1,\"Contype\",\"GPRS\"");
         gsmPort->println("AT+SAPBR=3,1,\"Contype\",\"GPRS\"");
         waitforOK();
 
-        ESP_LOGI("TAG", "AT+SAPBR=3,1,\"APN\",\"airtelgprs.com\"");
+        ESP_LOGI("GSM", "AT+SAPBR=3,1,\"APN\",\"airtelgprs.com\"");
         gsmPort->println("AT+SAPBR=3,1,\"APN\",\"airtelgprs.com\"");
         waitforOK();
 
@@ -62,21 +62,21 @@ public:
         delay(1000);
         yield();
 
-        ESP_LOGI("TAG", "AT+SAPBR=1,1");
+        ESP_LOGI("GSM", "AT+SAPBR=1,1");
         gsmPort->println("AT+SAPBR=1,1");
         waitforOK();
 
-        ESP_LOGI("TAG", "AT+CNTPCID=1");
+        ESP_LOGI("GSM", "AT+CNTPCID=1");
         gsmPort->println("AT+CNTPCID=1");
         waitforOK();
 
-        ESP_LOGI("TAG", "AT+CNTP=\"pool.ntp.org\",\"0\"");
+        ESP_LOGI("GSM", "AT+CNTP=\"pool.ntp.org\",\"0\"");
         gsmPort->println("AT+CNTP=\"pool.ntp.org\",\"0\"");
         waitforOK();
         syncTime();
         getNetworkStatus();
 
-        ESP_LOGI("TAG", "AT+CIPMUX=1");
+        ESP_LOGI("GSM", "AT+CIPMUX=1");
         gsmPort->println("AT+CIPMUX=1");
         waitforOK();
 
@@ -90,7 +90,7 @@ public:
             }
             thingsboardConnected = true;
 
-            ESP_LOGI(TAG, "Sending Data");
+            ESP_LOGI("GSM", "Sending Data");
             bool s = tb->sendTelemetryJson(package1);
             Serial.println(s);
             s = tb->sendTelemetryJson(package2);
@@ -109,7 +109,7 @@ public:
             delay(1);
             if (handOverSerial)
             {
-                ESP_LOGD("TAG", "Ending response scanner task");
+                ESP_LOGD("GSM", "Ending response scanner task");
                 vTaskDelete(NULL);
             }
 
@@ -123,7 +123,7 @@ public:
                 {
                     delay(10);
                     c[i] = char(gsmPort->read());
-                    ESP_LOGV("TAG", "%s", c);
+                    ESP_LOGV("GSM", "%s", c);
                     if (c[i] > 127)
                     {
                         c[i] = 0;
@@ -133,7 +133,7 @@ public:
                         break;
                     i++;
                 }
-                ESP_LOGI(TAG, "%s", c);
+                ESP_LOGI(GSM, "%s", c);
                 if (!strncmp(c, "OK", 2))
                     messageOK = true;
                 else if (!strncmp(c, "ERROR", 5))
@@ -164,7 +164,7 @@ public:
                     temp[0] = c[23];
                     temp[1] = c[24];
                     timeInfo.tm_sec = atoi(temp);
-                    ESP_LOGI(TAG, "Got Date/Time: %d-%d-%d | %d:%d:%d", timeInfo.tm_mday, timeInfo.tm_mon, timeInfo.tm_year, timeInfo.tm_hour, timeInfo.tm_min, timeInfo.tm_sec);
+                    ESP_LOGI("GSM", "Got Date/Time: %d-%d-%d | %d:%d:%d", timeInfo.tm_mday, timeInfo.tm_mon, timeInfo.tm_year, timeInfo.tm_hour, timeInfo.tm_min, timeInfo.tm_sec);
                     currentTime = mktime(&timeInfo);
                     tv.tv_sec = currentTime;
                     tv.tv_usec = 0;
@@ -201,7 +201,7 @@ private:
 
     void syncTime()
     {
-        ESP_LOGI("TAG", "AT+CNTP");
+        ESP_LOGI("GSM", "AT+CNTP");
         gsmPort->println("AT+CNTP");
         waitforOK();
         while (gotCNTP < 0)
@@ -212,23 +212,23 @@ private:
         switch (gotCNTP)
         {
         case 1:
-            ESP_LOGI("Server sync success");
+            ESP_LOGI("GSM", "Server sync success");
             gsmPort->println("AT+CCLK?");
             break;
         case 61:
-            ESP_LOGE("Network Error");
+            ESP_LOGE("GSM", "Network Error");
             break;
         case 62:
-            ESP_LOGE("DNS Resolution Error");
+            ESP_LOGE("GSM", "DNS Resolution Error");
             break;
         case 63:
-            ESP_LOGE("Connection Error");
+            ESP_LOGE("GSM", "Connection Error");
             break;
         case 64:
-            ESP_LOGE("Service response error");
+            ESP_LOGE("GSM", "Service response error");
             break;
         case 65:
-            ESP_LOGE("Service Response Timeout");
+            ESP_LOGE("GSM", "Service Response Timeout");
             break;
 
         default:
@@ -239,33 +239,33 @@ private:
 
     void getNetworkStatus()
     {
-        ESP_LOGI("TAG", "AT+CREG?");
+        ESP_LOGI("GSM", "AT+CREG?");
         gsmPort->println("AT+CREG?");
         waitforOK();
 
         switch (netStatus)
         {
         case 0:
-            ESP_LOGI(TAG, "Not registered, not currently searching a new operator to register to");
+            ESP_LOGI("GSM", "Not registered, not currently searching a new operator to register to");
             break;
         case 1:
-            ESP_LOGI(TAG, "Registered, home network ");
+            ESP_LOGI("GSM", "Registered, home network ");
             break;
         case 2:
-            ESP_LOGI(TAG, "Not registered, currently searching a new operator to register to");
+            ESP_LOGI("GSM", "Not registered, currently searching a new operator to register to");
             break;
         case 3:
-            ESP_LOGI(TAG, "Registration denied");
+            ESP_LOGI("GSM", "Registration denied");
             break;
         case 4:
-            ESP_LOGI(TAG, "Unknown");
+            ESP_LOGI("GSM", "Unknown");
             break;
         case 5:
-            ESP_LOGI(TAG, "Registered, roaming ");
+            ESP_LOGI("GSM", "Registered, roaming ");
             break;
 
         default:
-            ESP_LOGI(TAG, "Unknown Status Code");
+            ESP_LOGI("GSM", "Unknown Status Code");
             break;
         }
     }
@@ -277,7 +277,7 @@ private:
             if (error)
             {
                 error = false;
-                ESP_LOGE(TAG, "Something went wrong");
+                ESP_LOGE("GSM", "Something went wrong");
                 return;
             }
             delay(100);
@@ -305,16 +305,16 @@ private:
     {
         while (!tb->connected())
         {
-            ESP_LOGI(TAG, "Connecting to ThingsBoard node ...");
+            ESP_LOGI("GSM", "Connecting to ThingsBoard node ...");
             // Attempt to connect (clientId, username, password)
             modem->gprsConnect(APN, "", "");
             if (tb->connect(SECRET_SERVER, SECRET_TOKEN))
             {
-                ESP_LOGI(TAG, "[DONE]");
+                ESP_LOGI("GSM", "[DONE]");
             }
             else
             {
-                ESP_LOGE(TAG, "[FAILED] : retrying now");
+                ESP_LOGE("GSM", "[FAILED] : retrying now");
             }
         }
     }
