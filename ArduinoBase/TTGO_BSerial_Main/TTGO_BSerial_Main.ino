@@ -2,7 +2,7 @@
 #define SerialBMS Serial1
 #define SerialGSM Serial2
 
-#define DEVICE_NAME "ESP_32-COM4"
+#define DEVICE_NAME "ESP_32-COM18"
 #define SERVICE_UUID "4fafc201-1fb5-459e-8fcc-c5c9c331914b"
 #define CHARACTERISTIC_UUID "beb5483e-36e1-4688-b7f5-ea07361b26a8"
 
@@ -26,9 +26,9 @@
 
 float A3_offset = 0.060;
 
-char BMSTelemetryGeneral[256];
 char BMSTelemetryDetailed[256];
 char sensorTelemetry[256];
+char mobileTelemetry[600];
 char errorJSON[32];
 
 bool vehicleState = false;
@@ -54,14 +54,15 @@ TelemetryScanner ts(&mpu, &gps, &ads, &led, &remainingPower);
 // GSM Related
 AXP20X_Class axp;
 PowerManagement power(&axp);
-GSMHandler GSM(&SerialDebug, &SerialGSM, BMSTelemetryDetailed, BMSTelemetryGeneral, sensorTelemetry, true);
+GSMHandler GSM(&SerialDebug, &SerialGSM, BMSTelemetryDetailed, sensorTelemetry, true);
 
 // BLE
 BLEServer *pServer = NULL;
 BLECharacteristic *pCharacteristic = NULL;
 
 // JSON Docs
-StaticJsonDocument<600> incoming;
+StaticJsonDocument<1024> outgoing;
+StaticJsonDocument<1024> incoming;
 StaticJsonDocument<32> errorDoc;
 
 TaskHandle_t i2cTask;
@@ -110,18 +111,19 @@ void transmitTelemetry(void *parameters)
         if (sendTelemetry)
         {
             memset(BMSTelemetryDetailed, 0, 256);
-            memset(BMSTelemetryGeneral, 0, 256);
             memset(sensorTelemetry, 0, 256);
+            memset(mobileTelemetry, 0, 600);
 
             serializeJson(BMSDetailed, BMSTelemetryDetailed);
-            BMSTelemetryDetailed[strlen(BMSTelemetryDetailed)] = '\n';
-            serializeJson(BMSGeneral, BMSTelemetryGeneral);
-            BMSTelemetryGeneral[strlen(BMSTelemetryGeneral)] = '\n';
             serializeJson(ts.telemetryDoc, sensorTelemetry);
-            sensorTelemetry[strlen(sensorTelemetry)] = '\n';
-            sendData(BMSTelemetryGeneral);
-            sendData(BMSTelemetryDetailed);
-            sendData(sensorTelemetry);
+
+            outgoing.clear();
+            outgoing["pit"] = 0;
+            outgoing = ts.telemetryDoc;
+            mergeJSON(outgoing.as<JsonObject>(), BMSDetailed.as<JsonObject>());
+            serializeJson(outgoing, mobileTelemetry);
+            mobileTelemetry[strlen(mobileTelemetry)] = '\n';
+            sendData(mobileTelemetry);
         }
         delay(1000);
     }
@@ -322,9 +324,13 @@ void setup()
     ts.initialiseTelemetry();
 
     SerialDebug.begin(115200);
+    delay(1);
     SerialGSM.begin(115200, SERIAL_8N1, MODEM_RX, MODEM_TX);
+    delay(1);
     SerialBMS.begin(19200, SERIAL_8N1, BMS_RX, BMS_TX);
+    delay(1);
     initBMS();
+    delay(1);
 
     SerialGPS.begin(9600, SWSERIAL_8N1, GPS_RX, GPS_TX);
 

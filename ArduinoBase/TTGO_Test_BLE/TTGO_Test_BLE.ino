@@ -26,7 +26,9 @@ bool pauseTelemetry = false;
 const uint8_t LEDPin = 12;
 
 
-const char *package3 = "{\"acd\":0.12,\"aev\":-0.79,\"atm\":30,\"abv\":10.78,\"lat\":12.89572983,\"lon\":77.66020017,\"pit\":0.00,\"rol\":0.00,\"clv\":[3.22,3.22,3.22,3.22,3.22,3.22,3.22,3.22,3.22,3.22,3.22,3.22,3.22,3.22,3.22],\"btm\":[30,30,30,30,30,30],\"cur\":-3.22,\"cap\":17.44,\"bst\":1,\"tov\":48.55,\"ba%\":83.22}";
+const char *package3 = "{\"lat\":12.89572983,\"lon\":77.66020017,\"clv\":[3.22,3.22,3.22,3.22,3.22,3.22,3.22,3.22,3.22,3.22,3.22,3.22,3.22,3.22,3.22],\"btm\":[30,30,30,30,30,30],\"cur\":-3.22,\"cap\":17.44,\"bst\":1,\"tov\":48.55,\"ba%\":83.22}";
+const char *package3_1 = "{\"acd\":0.12,\"aev\":-0.79,\"atm\":30,\"abv\":10.78,\"lat\":12.89572983,\"lon\":77.66020017,\"pit\":0.00,\"rol\":0.00,\"clv\":[0],\"btm\":[0],\"cur\":0,\"cap\":0,\"bst\":0,\"tov\":0,\"ba%\":0}";
+bool sw = false;
 
 #define SERVICE_UUID "4fafc201-1fb5-459e-8fcc-c5c9c331914b"
 #define CHARACTERISTIC_UUID "beb5483e-36e1-4688-b7f5-ea07361b26a8"
@@ -86,6 +88,7 @@ class MyCallbacks : public BLECharacteristicCallbacks
 
         if (rxValue.length() > 0)
         {
+            Serial.print(rxValue.c_str());
             ESP_LOGI("TAG", "%s", rxValue);
             doc.clear();
             DeserializationError error = deserializeJson(doc, rxValue);
@@ -136,7 +139,11 @@ void telemetryTask(void *parameters)
     {
         if (!pauseTelemetry)
         {
-            sendData(package3);
+            if(sw)
+                sendData(package3);
+            else
+                sendData(package3_1);
+            sw = !sw;
         }
         delay(1000);
     }

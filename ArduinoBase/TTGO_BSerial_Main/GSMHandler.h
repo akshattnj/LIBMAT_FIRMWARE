@@ -19,13 +19,12 @@ class GSMHandler
 {
 public:
     time_t currentTime;
-    GSMHandler(HardwareSerial *debugPort, HardwareSerial *GSM, char *package1Pointer, char *package2Pointer, char *package3Pointer, bool debugMode = false)
+    GSMHandler(HardwareSerial *debugPort, HardwareSerial *GSM, char *package1Pointer, char *package2Pointer, bool debugMode = false)
     {
         gsmPort = GSM;
         debug = debugPort;
         package1 = package1Pointer;
         package2 = package2Pointer;
-        package3 = package3Pointer;
         if (debugMode)
         {
             debugger = new StreamDebugger(*gsmPort, *debug);
@@ -91,13 +90,12 @@ public:
             thingsboardConnected = true;
 
             ESP_LOGI("GSM", "Sending Data");
-            bool s = tb->sendTelemetryJson(package1);
+            bool s;
+            s = tb->sendTelemetryJson(package1);
             Serial.println(s);
             s = tb->sendTelemetryJson(package2);
             Serial.println(s);
-            s = tb->sendTelemetryJson(package3);
-            Serial.println(s);
-            delay(3000);
+            delay(5000);
             yield();
         }
     }
@@ -185,11 +183,11 @@ private:
     TinyGsmClient *client;
     ThingsBoard *tb;
     bool thingsboardConnected = false;
+    uint8_t dataSwitch;
 
     char *c;
     char *package1;
     char *package2;
-    char *package3;
     bool messageOK = false;
     bool error = false;
     bool handOverSerial = false;

@@ -18,8 +18,7 @@ float dischargingCurrent;
 float totalCellVoltage;
 float remainingPower;
 
-StaticJsonDocument<512> BMSGeneral;
-StaticJsonDocument<512> BMSDetailed;
+StaticJsonDocument<1024> BMSDetailed;
 ModbusClientRTU RS485(Serial1);
 Error err;
 uint8_t BMSSlaveID = 2;
@@ -173,8 +172,6 @@ void getBMSTelemetry()
 
     BMSDetailed.clear();
     JsonArray cellVoltages = BMSDetailed.createNestedArray("clv");
-    cellVoltages.add(round2(cellVolts[0]));
-    cellVoltages.add(round2(cellVolts[1]));
     cellVoltages.add(round2(cellVolts[2]));
     cellVoltages.add(round2(cellVolts[3]));
     cellVoltages.add(round2(cellVolts[4]));
@@ -195,15 +192,14 @@ void getBMSTelemetry()
     temperatures.add(temperature[3]);
     temperatures.add(temperature[4]);
     temperatures.add(temperature[5]);
-
-    BMSGeneral.clear();
-    BMSGeneral["cur"] = round2(current);
-    BMSGeneral["cap"] = round2(capah);
-    BMSGeneral["bst"] = BMSState;
-    BMSGeneral["cav"] = round2(chargingVoltage);
-    BMSGeneral["cai"] = round2(chargingCurrent);
-    BMSGeneral["div"] = round2(dischargingVoltage);
-    BMSGeneral["dii"] = round2(dischargingCurrent);
-    BMSGeneral["tov"] = round2(totalCellVoltage);
-    BMSGeneral["ba%"] = round2(remainingPower);
+    if(dischargingCurrent > 0) {
+        BMSDetailed["cur"] = -1*round2(current);
+    }
+    else {
+        BMSDetailed["cur"] = round2(current);
+    }
+    BMSDetailed["cap"] = round2(capah);
+    BMSDetailed["bst"] = BMSState;
+    /*BMSDetailed["tov"] = round2(totalCellVoltage);
+    BMSDetailed["ba%"] = round2(remainingPower);*/
 }
