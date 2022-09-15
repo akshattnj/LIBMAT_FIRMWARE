@@ -95,7 +95,7 @@ class MyCallbacks : public BLECharacteristicCallbacks
             if (error)
             {
                 ESP_LOGE("TAG", "deserializeJson() failed: %s", error.c_str());
-                sendData("{\"error\":1}");
+                sendData("{\"error\":1}\n");
                 return;
             }
             else
@@ -124,6 +124,11 @@ class MyCallbacks : public BLECharacteristicCallbacks
                 if (!data.isNull())
                 {
                     pauseTelemetry = data.as<bool>();
+                    sendData("{\"error\":0}\n");
+                    return;
+                }
+                data = doc["resetMPU"];
+                {
                     sendData("{\"error\":0}\n");
                     return;
                 }
