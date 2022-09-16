@@ -1,0 +1,19 @@
+#ifndef DEFINATIONS_H
+#define DEFINATIONS_H
+
+#define UART_TXD (CONFIG_UART_TXD)
+#define UART_RXD (CONFIG_UART_RXD)
+#define UART_RTS (UART_PIN_NO_CHANGE)
+#define UART_CTS (UART_PIN_NO_CHANGE)
+
+#define UART_PORT_NUM      (CONFIG_UART_PORT_NUM)
+#define UART_BAUD_RATE     (CONFIG_UART_BAUD_RATE)
+#define UART_STACK_SIZE    (CONFIG_UART_STACK_SIZE)
+
+#define BUF_SIZE (1024)
+
+#define MAIN_TAG "Main"
+#define UART_TAG "UART Handler"
+
+
+#endif

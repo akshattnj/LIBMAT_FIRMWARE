@@ -1,0 +1,38 @@
+menu "UART Configuration"
+
+    config UART_PORT_NUM
+        int "UART port number"
+        range 0 2
+        default 1
+        help
+            UART communication port number
+
+    config UART_BAUD_RATE
+        int "UART communication speed"
+        range 1200 115200
+        default 115200
+        help
+            UART communication speed
+
+    config UART_RXD
+        int "UART RXD pin number"
+        range -1 34
+        default 5
+        help
+            GPIO number for UART RX pin
+
+    config UART_TXD
+        int "UART TXD pin number"
+        range -1 34
+        default 4
+        help
+            GPIO number for UART TX pin
+
+    config UART_STACK_SIZE
+        int "UART echo task stack size"
+        range 1024 16384
+        default 2048
+        help
+            Defines stack size for UART. Insufficient stack size can cause crash.
+
+endmenu
