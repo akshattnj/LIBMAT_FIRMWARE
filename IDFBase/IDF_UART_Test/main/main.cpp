@@ -1,3 +1,14 @@
+/**
+ * @file main.cpp
+ * @author Antony Kuruvilla (ajosekuruvilla@gmail.com)
+ * @brief Tests the UART functionality with the EC20 Chipset 
+ * @version 1.0
+ * @date 2022-09-16
+ * 
+ * @copyright Copyright (c) 2022
+ * 
+ */
+
 #include "src/Definations.h"
 #include "src/UARTHandler.h"
 
