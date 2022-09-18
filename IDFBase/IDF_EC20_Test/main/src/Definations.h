@@ -1,0 +1,19 @@
+#ifndef DEFINATIONS_H
+#define DEFINATIONS_H
+
+#define EC20_TXD (CONFIG_EC20_TXD)
+#define EC20_RXD (CONFIG_EC20_RXD)
+#define UART_RTS (UART_PIN_NO_CHANGE)
+#define UART_CTS (UART_PIN_NO_CHANGE)
+
+#define EC20_PORT_NUM      (CONFIG_EC20_PORT_NUM)
+#define EC20_BAUD_RATE     (CONFIG_EC20_BAUD_RATE)
+#define EC20_STACK_SIZE    (CONFIG_EC20_STACK_SIZE)
+
+#define BUF_SIZE (1024)
+
+#define MAIN_TAG "Main"
+#define EC20_TAG "UART Handler"
+
+
+#endif

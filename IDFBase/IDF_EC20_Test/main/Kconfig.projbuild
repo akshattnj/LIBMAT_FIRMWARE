@@ -1,0 +1,38 @@
+menu "EC20 Configuration"
+
+    config EC20_PORT_NUM
+        int "EC20 port number"
+        range 0 2
+        default 1
+        help
+            EC20 communication port number
+
+    config EC20_BAUD_RATE
+        int "EC20 communication speed"
+        range 1200 115200
+        default 115200
+        help
+            EC20 communication speed
+
+    config EC20_RXD
+        int "EC20 RXD pin number"
+        range -1 34
+        default 5
+        help
+            GPIO number for EC20 RX pin
+
+    config EC20_TXD
+        int "EC20 TXD pin number"
+        range -1 34
+        default 4
+        help
+            GPIO number for EC20 TX pin
+
+    config EC20_STACK_SIZE
+        int "EC20 echo task stack size"
+        range 1024 16384
+        default 4096
+        help
+            Defines stack size for EC20. Insufficient stack size can cause crash.
+
+endmenu
