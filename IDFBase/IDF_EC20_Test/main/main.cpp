@@ -1,12 +1,12 @@
 /**
  * @file main.cpp
  * @author Antony Kuruvilla (ajosekuruvilla@gmail.com)
- * @brief Tests the UART functionality with the EC20 Chipset 
+ * @brief Tests the UART functionality with the EC20 Chipset
  * @version 1.0
  * @date 2022-09-16
- * 
+ *
  * @copyright Copyright (c) 2022
- * 
+ *
  */
 
 #include "src/Definations.h"
@@ -34,8 +34,10 @@ extern "C" void app_main(void)
                 { testEC20.getGPSData(args); },
                 "EC20 GPS", 2048, NULL, 10, NULL);
     testEC20.setup();
-    while(1) {
-        vTaskDelay(1000/portTICK_RATE_MS);
+    testEC20.connect();
+    while (1)
+    {
+        vTaskDelay(1000 / portTICK_RATE_MS);
         taskYIELD();
     }
 }

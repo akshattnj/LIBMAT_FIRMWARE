@@ -36,10 +36,11 @@ public:
         ESP_ERROR_CHECK(uart_set_pin(EC20_PORT_NUM, EC20_TXD, EC20_RXD, UART_RTS, UART_CTS));
     }
 
-    void readNetStatus(char* output, bool *enabled, bool *connected) {
+    void readNetStatus(char *output, bool *enabled, bool *connected)
+    {
         ESP_LOGI(EC20_TAG, "Here: %s", output);
         *enabled = output[8] - '0';
-        if(*enabled)
+        if (*enabled)
             ESP_LOGI(EC20_TAG, "Mode enabled");
         else
             ESP_LOGI(EC20_TAG, "Mode not enabled");
@@ -94,17 +95,18 @@ public:
                     ESP_LOGE(EC20_TAG, "Got Error communication with EC20:\n%s", incomingData);
                 }
                 output = strstr(incomingData, "+CGREG:");
-                if(output)
+                if (output)
                 {
                     readNetStatus(output, &GSMEnabled, &GSMConnected);
                     goto chkEnd;
                 }
                 output = strstr(incomingData, "+CEREG:");
-                if(output) {
+                if (output)
+                {
                     readNetStatus(output, &LTEEnabled, &LTEConnected);
                     goto chkEnd;
                 }
-                chkEnd:
+            chkEnd:
                 ESP_LOGI(EC20_TAG, "Got data: %s", incomingData);
             }
             taskYIELD();
@@ -138,6 +140,11 @@ public:
         {
             while (!waitForOk())
             {
+                if (gotError)
+                {
+                    gotError = false;
+                    vTaskDelay(100 / portTICK_RATE_MS);
+                }
                 ESP_LOGE(EC20_TAG, "Failed to communicate with EC20. Sending %s again", data);
                 uart_write_bytes(EC20_PORT_NUM, sendBuffer, strlen(sendBuffer));
                 vTaskDelay(10 / portTICK_RATE_MS);
@@ -173,7 +180,7 @@ public:
         sendAT("E0");
         sendAT("+CMEE=2");
         sendAT("+CSQ");
-        // sendAT("+CREG=1"); // Older circuit switched connectivity
+        sendAT("+CREG=0"); // Older circuit switched connectivity
         sendAT("+CGREG=1"); // For 2G connectivity
         // sentAT("+CEREG=1") // For 3G/4G/5G connectivity
         sendAT("+QGPSCFG=\"nmeasrc\",1");
@@ -184,8 +191,21 @@ public:
         pauseGPS = false;
     }
 
-    void connect() {
-
+    void connect()
+    {
+        if (GSMConnected || LTEConnected)
+        {
+            pauseGPS = true;
+            sendAT("+QIDEACT=1");
+            sendAT("+QICSGP=1,1,\"AIRTELGPRS.COM\",\"\",\"\",0");
+            sendAT("+QIACT=1");
+            sendAT("+QIACT?");
+            pauseGPS = false;
+        }
+        else
+        {
+            ESP_LOGE(EC20_TAG, "Network not connected. Aborting");
+        }
     }
 
     void getGPSData(void *args)
@@ -196,7 +216,8 @@ public:
             {
                 sendAT("+QGPSLOC=1", false);
             }
-            if(stopGPS == true) {
+            if (stopGPS == true)
+            {
                 sendAT("+QGPSEND");
                 vTaskDelete(NULL);
             }
@@ -212,7 +233,6 @@ private:
     bool GSMConnected = false;
     bool LTEEnabled = false;
     bool LTEConnected = false;
-
 };
 
 #endif
