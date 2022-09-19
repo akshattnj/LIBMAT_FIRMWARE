@@ -29,13 +29,13 @@ extern "C" void app_main(void)
     testEC20.begin();
     xTaskCreate([](void *args)
                 { testEC20.portListner(); },
-                "EC20 Reader", EC20_STACK_SIZE, NULL, 10, NULL);
-    xTaskCreate([](void* args) {
-        while(1)
-        {
-            testEC20.sendAT("AT\r\n", true);
-            vTaskDelay(1000 / portTICK_RATE_MS);
-            taskYIELD();
-        }
-    }, "EC20 WRITER", EC20_STACK_SIZE, NULL, 10, NULL);
+                "EC20 Reader", 2048, NULL, 10, NULL);
+    xTaskCreate([](void *args)
+                { testEC20.getGPSData(args); },
+                "EC20 GPS", 2048, NULL, 10, NULL);
+    testEC20.setup();
+    while(1) {
+        vTaskDelay(1000/portTICK_RATE_MS);
+        taskYIELD();
+    }
 }
