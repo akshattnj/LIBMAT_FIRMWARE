@@ -200,6 +200,6 @@ void getBMSTelemetry()
     }
     BMSDetailed["cap"] = round2(capah);
     BMSDetailed["bst"] = BMSState;
-    /*BMSDetailed["tov"] = round2(totalCellVoltage);
-    BMSDetailed["ba%"] = round2(remainingPower);*/
+    BMSDetailed["tov"] = round2(totalCellVoltage);
+    BMSDetailed["ba%"] = round2(remainingPower);
 }

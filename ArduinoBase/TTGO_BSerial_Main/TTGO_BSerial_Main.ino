@@ -122,7 +122,7 @@ void transmitTelemetry(void *parameters)
             outgoing = ts.telemetryDoc;
             mergeJSON(outgoing.as<JsonObject>(), BMSDetailed.as<JsonObject>());
             serializeJson(outgoing, mobileTelemetry);
-            mobileTelemetry[strlen(mobileTelemetry)] = '\n';
+            // mobileTelemetry[strlen(mobileTelemetry)] = '\n';
             sendData(mobileTelemetry);
         }
         delay(1000);
@@ -358,7 +358,7 @@ void setup()
 
     xTaskCreate([](void *parameters)
                 { ts.handleI2CTelemetry(parameters); },
-                "I2C Scanner", 2048, NULL, 10, &i2cTask);
+                "I2C Scanner", 4096, NULL, 10, &i2cTask);
 
     xTaskCreate(updateBMSTelemetry, "BMS Telemetry", 2048, NULL, 15, &bmsTask);
 
