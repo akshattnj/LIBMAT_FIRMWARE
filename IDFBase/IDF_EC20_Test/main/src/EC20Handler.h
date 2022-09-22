@@ -115,11 +115,19 @@ public:
                 output = strstr(incomingData, "+QMTOPEN:");
                 if (output)
                 {
+                    if(output[12] == '0')
+                        MQTTFlags = (MQTTFlags | 0b10000000) & 0b10111111;
+                    else
+                        MQTTFlags = (MQTTFlags & 0b01111111) | 0b01000000;
                     goto chkEnd;
                 }
                 output = strstr(incomingData, "+QMTCONN");
                 if (output)
                 {
+                    if(output[12] == '0')
+                        MQTTFlags = (MQTTFlags | 0b00100000) & 0b11101111;
+                    else
+                        MQTTFlags = (MQTTFlags & 0b11011111) | 0b00010000;
                     goto chkEnd;
                 }
             chkEnd:
@@ -142,6 +150,34 @@ public:
             taskYIELD();
         }
         connectFlags = connectFlags & 0b01111111;
+        return true;
+    }
+
+    bool waitForMQTTRespone(uint8_t messageCode) {
+        uint8_t check;
+        uint8_t error;
+        switch (messageCode)
+        {
+        case 0:
+            check = 0b10000000;
+            error = 0b01000000;
+            break;
+        case 1:
+            check = 0b00100000;
+            error = 0b00010000;
+            break;
+        default:
+            break;
+        }
+
+        while ((MQTTFlags & check) == 0)
+        {
+            vTaskDelay(10 / portTICK_RATE_MS);
+            if ((connectFlags & error) > 0)
+                return false;
+            taskYIELD();
+        }
+        connectFlags = connectFlags & check;
         return true;
     }
 
@@ -199,7 +235,7 @@ public:
         sendAT("+CSQ");
         sendAT("+CREG=0");  // Older circuit switched connectivity
         sendAT("+CGREG=0"); // For 2G connectivity
-        // sentAT("+CEREG=1") // For 3G/4G/5G connectivity
+        // sentAT("+CEREG=0") // For 3G/4G/5G connectivity
         sendAT("+QGPSCFG=\"nmeasrc\",1");
         sendAT("+QGPSEND", false);
         sendAT("+QGPS=1");
@@ -208,14 +244,32 @@ public:
         pauseGPS = false;
     }
 
+    void reconnect() {
+        uart_write_bytes(EC20_PORT_NUM, "AT+QMTOPEN=0,\"demo.thingsboard.io\",1883\r\n", 41);
+        if(!waitForMQTTRespone(0))
+        {
+            ESP_LOGE(EC20_TAG, "Connect Failed");
+            return;
+        }
+        uart_write_bytes(EC20_PORT_NUM, "AT+QMTCONN=0,\"asdf\",\"01234\"\r\n", 29);
+        if(!waitForMQTTRespone(1))
+        {
+            ESP_LOGE(EC20_TAG, "Connect Failed");
+            return;
+        }
+        ESP_LOGI(EC20_TAG, "Thingsboard connected");
+    }
+
     void connect()
     {
         pauseGPS = true;
-        sendAT("+QMTCFG=\"keepalive\",0,30");
-        sendAT("+QMTCFG=\"session\",0,1");
-        sendAT("+QMTCFG=\"will\",0,0,0,0");
-        sendAT("+QMTCFG=\"recv/mode\",0,0,1");
-        sendAT("+QMTCFG=\"send/mode\",0,0");
+        this->sendAT("+QMTDISC=0");
+        this->sendAT("+QMTCFG=\"keepalive\",0,30");
+        this->sendAT("+QMTCFG=\"session\",0,1");
+        this->sendAT("+QMTCFG=\"will\",0,0,0,0");
+        this->sendAT("+QMTCFG=\"recv/mode\",0,0,1");
+        this->sendAT("+QMTCFG=\"send/mode\",0,0");
+        this->reconnect();
         pauseGPS = false;
     }
 
@@ -238,7 +292,8 @@ public:
     }
 
 private:
-    uint8_t connectFlags = 0; // {gotOk, gotError, GSM Mode Enabled, LTE mode enabled, GSM Connected, LTE connected, MQTT Server connected, MQTT Connected}
+    uint8_t connectFlags = 0; // {gotOk, gotError, GSM Mode Enabled, LTE mode enabled, GSM Connected, LTE connected}
+    uint8_t MQTTFlags = 0; // {Server Connect, Server Connect Error, MQTT Connect, MQTT Connect Error}
 };
 
 #endif
