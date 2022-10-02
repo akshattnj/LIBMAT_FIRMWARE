@@ -112,6 +112,8 @@ public:
                     readNetStatus(output, true);
                     goto chkEnd;
                 }
+
+            #if CONFIG_EC20_ENABLE_MQTT
                 output = strstr(incomingData, "+QMTOPEN:");
                 if (output)
                 {
@@ -130,6 +132,7 @@ public:
                         MQTTFlags = (MQTTFlags & 0b11011111) | 0b00010000;
                     goto chkEnd;
                 }
+            #endif
             chkEnd:
                 ESP_LOGI(EC20_TAG, "Got data: %s", incomingData);
             }
@@ -153,6 +156,7 @@ public:
         return true;
     }
 
+#if CONFIG_EC20_ENABLE_MQTT
     bool waitForMQTTRespone(uint8_t messageCode) {
         uint8_t check;
         uint8_t error;
@@ -180,6 +184,7 @@ public:
         connectFlags = connectFlags & check;
         return true;
     }
+#endif
 
     bool sendAT(char *data, bool isCritical = true, uint64_t messageDealy = 1000000L)
     {
@@ -236,14 +241,17 @@ public:
         sendAT("+CREG=0");  // Older circuit switched connectivity
         sendAT("+CGREG=0"); // For 2G connectivity
         // sentAT("+CEREG=0") // For 3G/4G/5G connectivity
+    #if CONFIG_EC20_ENABLE_GPS
         sendAT("+QGPSCFG=\"nmeasrc\",1");
         sendAT("+QGPSEND", false);
         sendAT("+QGPS=1");
+    #endif
         sendAT("+CEREG?");
         sendAT("+CGREG?");
         pauseGPS = false;
     }
 
+#if CONFIG_EC20_ENABLE_MQTT
     void reconnect() {
         uart_write_bytes(EC20_PORT_NUM, "AT+QMTOPEN=0,\"demo.thingsboard.io\",1883\r\n", 41);
         if(!waitForMQTTRespone(0))
@@ -272,7 +280,9 @@ public:
         this->reconnect();
         pauseGPS = false;
     }
+#endif
 
+#if CONFIG_EC20_ENABLE_GPS
     void getGPSData(void *args)
     {
         while (1)
@@ -290,6 +300,7 @@ public:
             taskYIELD();
         }
     }
+#endif
 
 private:
     uint8_t connectFlags = 0; // {gotOk, gotError, GSM Mode Enabled, LTE mode enabled, GSM Connected, LTE connected}

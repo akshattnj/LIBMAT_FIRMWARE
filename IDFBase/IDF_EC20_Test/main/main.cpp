@@ -30,14 +30,20 @@ extern "C" void app_main(void)
     xTaskCreate([](void *args)
                 { testEC20.portListner(); },
                 "EC20 Reader", 2048, NULL, 10, NULL);
+    testEC20.setup();
+    
+#if CONFIG_EC20_ENABLE_GPS
     xTaskCreate([](void *args)
                 { testEC20.getGPSData(args); },
                 "EC20 GPS", 2048, NULL, 10, NULL);
-    testEC20.setup();
+#endif
+
+#if CONFIG_EC20_ENABLE_MQTT
     testEC20.connect();
     while (1)
     {
         vTaskDelay(1000 / portTICK_RATE_MS);
         taskYIELD();
     }
+#endif
 }
