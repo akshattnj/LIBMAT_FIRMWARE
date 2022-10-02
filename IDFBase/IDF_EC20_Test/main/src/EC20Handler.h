@@ -36,49 +36,25 @@ public:
         ESP_ERROR_CHECK(uart_set_pin(EC20_PORT_NUM, EC20_TXD, EC20_RXD, UART_RTS, UART_CTS));
     }
 
-    void readNetStatus(char *output, bool LTE)
+    void setup()
     {
-        ESP_LOGD(EC20_TAG, "Here: %s", output);
-        bool enabled = output[8] - '0';
-        if (enabled)
-        {
-            ESP_LOGI(EC20_TAG, "Mode enabled");
-            connectFlags = LTE ? connectFlags | 0b00010000 : connectFlags | 0b00100000;
-        }
-        else
-        {
-            ESP_LOGI(EC20_TAG, "Mode not enabled");
-            connectFlags = LTE ? connectFlags & 0b11101111 : connectFlags & 0b11011111;
-        }
-        uint8_t regStatus = output[10] - '0';
-        switch (regStatus)
-        {
-        case 0:
-            ESP_LOGI(EC20_TAG, "Not Registered, not searching");
-            connectFlags = LTE ? connectFlags & 0b11111011 : connectFlags & 0b11110111;
-            break;
-        case 1:
-            ESP_LOGI(EC20_TAG, "Registered, Home");
-            connectFlags = LTE ? connectFlags | 0b00000100 : connectFlags | 0b00001000;
-            break;
-        case 2:
-            ESP_LOGI(EC20_TAG, "Not Registered, Searching");
-            connectFlags = LTE ? connectFlags & 0b11111011 : connectFlags & 0b11110111;
-            break;
-        case 3:
-            ESP_LOGI(EC20_TAG, "Not Registered, Denied");
-            connectFlags = LTE ? connectFlags & 0b11111011 : connectFlags & 0b11110111;
-            break;
-        case 4:
-            ESP_LOGI(EC20_TAG, "Unknown, Sim may not support mode");
-            connectFlags = LTE ? connectFlags & 0b11111011 : connectFlags & 0b11110111;
-            break;
-        case 5:
-            ESP_LOGI(EC20_TAG, "Registered, Roaming");
-            connectFlags = LTE ? connectFlags | 0b00000100 : connectFlags | 0b00001000;
-        default:
-            break;
-        }
+        this->sendAT("");
+        this->sendAT("V1");
+        this->sendAT("E0");
+        this->sendAT("+CMEE=2");
+        this->sendAT("+CPIN?");
+        this->sendAT("+CSQ");
+        this->sendAT("+CREG=0");  // Older circuit switched connectivity
+        this->sendAT("+CGREG=0"); // For 2G connectivity
+        this->sendAT("+CEREG=0"); // For 3G/4G/5G connectivity
+    #if CONFIG_EC20_ENABLE_GPS
+        this->sendAT("+QGPSCFG=\"nmeasrc\",1");
+        this->sendAT("+QGPSEND", false);
+        this->sendAT("+QGPS=1");
+    #endif
+        this->sendAT("+CEREG?");
+        this->sendAT("+CGREG?");
+        pauseGPS = false;
     }
 
     void portListner()
@@ -103,13 +79,13 @@ public:
                 output = strstr(incomingData, "+CGREG:");
                 if (output)
                 {
-                    readNetStatus(output, false);
+                    this->readNetStatus(output, false);
                     goto chkEnd;
                 }
                 output = strstr(incomingData, "+CEREG:");
                 if (output)
                 {
-                    readNetStatus(output, true);
+                    this->readNetStatus(output, true);
                     goto chkEnd;
                 }
 
@@ -156,6 +132,95 @@ public:
         return true;
     }
 
+    bool sendAT(char *data, bool isCritical = true, uint64_t messageDealy = 1000000L)
+    {
+        uint16_t dataLen = strlen(data);
+        char sendBuffer[dataLen + 5];
+        sprintf(sendBuffer, "AT%s\r\n", data);
+        ESP_LOGI(EC20_TAG, "Sending Data: %s", sendBuffer);
+        uart_write_bytes(EC20_PORT_NUM, sendBuffer, strlen(sendBuffer));
+        if (isCritical == true)
+        {
+            while (!this->waitForOk(messageDealy))
+            {
+                if ((connectFlags & 0b01000000) > 0)
+                {
+                    connectFlags = connectFlags & 0b10111111;
+                    vTaskDelay(100 / portTICK_RATE_MS);
+                }
+                ESP_LOGE(EC20_TAG, "Failed to communicate with EC20. Sending %s again", data);
+                uart_write_bytes(EC20_PORT_NUM, sendBuffer, strlen(sendBuffer));
+                vTaskDelay(10 / portTICK_RATE_MS);
+                taskYIELD();
+            }
+            return true;
+        }
+        else
+        {
+            for (int attempts = 0; attempts < 5; attempts++)
+            {
+                if (this->waitForOk(messageDealy))
+                    return true;
+                if ((connectFlags & 0b01000000) > 0)
+                {
+                    connectFlags = connectFlags & 0b10111111;
+                    return false;
+                }
+                ESP_LOGE(EC20_TAG, "Failed to communicate with EC20. Sending %s again", data);
+                uart_write_bytes(EC20_PORT_NUM, data, strlen(data));
+                vTaskDelay(10 / portTICK_RATE_MS);
+                taskYIELD();
+            }
+            ESP_LOGE(EC20_TAG, "Failed to communicate with EC20");
+            return false;
+        }
+    }
+
+    void readNetStatus(char *output, bool LTE)
+    {
+        ESP_LOGD(EC20_TAG, "Here: %s", output);
+        bool enabled = output[8] - '0';
+        if (enabled)
+        {
+            ESP_LOGI(EC20_TAG, "Mode enabled");
+            connectFlags = LTE ? connectFlags | 0b00010000 : connectFlags | 0b00100000;
+        }
+        else
+        {
+            ESP_LOGI(EC20_TAG, "Mode not enabled");
+            connectFlags = LTE ? connectFlags & 0b11101111 : connectFlags & 0b11011111;
+        }
+        uint8_t regStatus = output[10] - '0';
+        switch (regStatus)
+        {
+        case 0:
+            ESP_LOGI(EC20_TAG, "Not Registered, not searching");
+            connectFlags = LTE ? connectFlags & 0b11111011 : connectFlags & 0b11110111;
+            break;
+        case 1:
+            ESP_LOGI(EC20_TAG, "Registered, Home");
+            connectFlags = LTE ? connectFlags | 0b00000100 : connectFlags | 0b00001000;
+            break;
+        case 2:
+            ESP_LOGI(EC20_TAG, "Not Registered, Searching");
+            connectFlags = LTE ? connectFlags & 0b11111011 : connectFlags & 0b11110111;
+            break;
+        case 3:
+            ESP_LOGI(EC20_TAG, "Not Registered, Denied");
+            connectFlags = LTE ? connectFlags & 0b11111011 : connectFlags & 0b11110111;
+            break;
+        case 4:
+            ESP_LOGI(EC20_TAG, "Unknown, Sim may not support mode");
+            connectFlags = LTE ? connectFlags & 0b11111011 : connectFlags & 0b11110111;
+            break;
+        case 5:
+            ESP_LOGI(EC20_TAG, "Registered, Roaming");
+            connectFlags = LTE ? connectFlags | 0b00000100 : connectFlags | 0b00001000;
+        default:
+            break;
+        }
+    }
+
 #if CONFIG_EC20_ENABLE_MQTT
     bool waitForMQTTRespone(uint8_t messageCode) {
         uint8_t check;
@@ -184,74 +249,7 @@ public:
         connectFlags = connectFlags & check;
         return true;
     }
-#endif
 
-    bool sendAT(char *data, bool isCritical = true, uint64_t messageDealy = 1000000L)
-    {
-        uint16_t dataLen = strlen(data);
-        char sendBuffer[dataLen + 5];
-        sprintf(sendBuffer, "AT%s\r\n", data);
-        ESP_LOGI(EC20_TAG, "Sending Data: %s", sendBuffer);
-        uart_write_bytes(EC20_PORT_NUM, sendBuffer, strlen(sendBuffer));
-        if (isCritical == true)
-        {
-            while (!waitForOk(messageDealy))
-            {
-                if ((connectFlags & 0b01000000) > 0)
-                {
-                    connectFlags = connectFlags & 0b10111111;
-                    vTaskDelay(100 / portTICK_RATE_MS);
-                }
-                ESP_LOGE(EC20_TAG, "Failed to communicate with EC20. Sending %s again", data);
-                uart_write_bytes(EC20_PORT_NUM, sendBuffer, strlen(sendBuffer));
-                vTaskDelay(10 / portTICK_RATE_MS);
-                taskYIELD();
-            }
-            return true;
-        }
-        else
-        {
-            for (int attempts = 0; attempts < 5; attempts++)
-            {
-                if (waitForOk(messageDealy))
-                    return true;
-                if ((connectFlags & 0b01000000) > 0)
-                {
-                    connectFlags = connectFlags & 0b10111111;
-                    return false;
-                }
-                ESP_LOGE(EC20_TAG, "Failed to communicate with EC20. Sending %s again", data);
-                uart_write_bytes(EC20_PORT_NUM, data, strlen(data));
-                vTaskDelay(10 / portTICK_RATE_MS);
-                taskYIELD();
-            }
-            ESP_LOGE(EC20_TAG, "Failed to communicate with EC20");
-            return false;
-        }
-    }
-
-    void setup()
-    {
-        sendAT("");
-        sendAT("V1");
-        sendAT("E0");
-        sendAT("+CMEE=2");
-        sendAT("+CPIN?");
-        sendAT("+CSQ");
-        sendAT("+CREG=0");  // Older circuit switched connectivity
-        sendAT("+CGREG=0"); // For 2G connectivity
-        // sentAT("+CEREG=0") // For 3G/4G/5G connectivity
-    #if CONFIG_EC20_ENABLE_GPS
-        sendAT("+QGPSCFG=\"nmeasrc\",1");
-        sendAT("+QGPSEND", false);
-        sendAT("+QGPS=1");
-    #endif
-        sendAT("+CEREG?");
-        sendAT("+CGREG?");
-        pauseGPS = false;
-    }
-
-#if CONFIG_EC20_ENABLE_MQTT
     void reconnect() {
         uart_write_bytes(EC20_PORT_NUM, "AT+QMTOPEN=0,\"demo.thingsboard.io\",1883\r\n", 41);
         if(!waitForMQTTRespone(0))
