@@ -10,6 +10,15 @@ extern "C"
 #include "freertos/task.h"
 #include "driver/uart.h"
 #include "esp_log.h"
+#include "nmea.h"
+#include "gpgll.h"
+#include "gpgga.h"
+#include "gprmc.h"
+#include "gpgsa.h"
+#include "gpvtg.h"
+#include "gptxt.h"
+#include "gpgsv.h"
+
 }
 
 class EC20Handler
@@ -17,8 +26,13 @@ class EC20Handler
 public:
     int16_t incomingLen;
     char incomingData[BUF_SIZE];
+    
+#if CONFIG_EC20_ENABLE_GPS
     bool pauseGPS = true;
     bool stopGPS = false;
+    double longitude;
+    double latitude;
+#endif
 
     uart_config_t portConfig = {
         .baud_rate = EC20_BAUD_RATE,
@@ -47,11 +61,11 @@ public:
         this->sendAT("+CREG=0");  // Older circuit switched connectivity
         this->sendAT("+CGREG=0"); // For 2G connectivity
         this->sendAT("+CEREG=0"); // For 3G/4G/5G connectivity
-    #if CONFIG_EC20_ENABLE_GPS
+#if CONFIG_EC20_ENABLE_GPS
         this->sendAT("+QGPSCFG=\"nmeasrc\",1");
         this->sendAT("+QGPSEND", false);
         this->sendAT("+QGPS=1");
-    #endif
+#endif
         this->sendAT("+CEREG?");
         this->sendAT("+CGREG?");
         pauseGPS = false;
@@ -89,11 +103,20 @@ public:
                     goto chkEnd;
                 }
 
-            #if CONFIG_EC20_ENABLE_MQTT
+#if CONFIG_EC20_ENABLE_GPS
+                output = strstr(incomingData, "+QGPSGNMEA:");
+                if (output)
+                {
+                    this->readGSPResponse(output);
+                    goto chkEnd;
+                }
+#endif
+
+#if CONFIG_EC20_ENABLE_MQTT
                 output = strstr(incomingData, "+QMTOPEN:");
                 if (output)
                 {
-                    if(output[12] == '0')
+                    if (output[12] == '0')
                         MQTTFlags = (MQTTFlags | 0b10000000) & 0b10111111;
                     else
                         MQTTFlags = (MQTTFlags & 0b01111111) | 0b01000000;
@@ -102,15 +125,15 @@ public:
                 output = strstr(incomingData, "+QMTCONN");
                 if (output)
                 {
-                    if(output[12] == '0')
+                    if (output[12] == '0')
                         MQTTFlags = (MQTTFlags | 0b00100000) & 0b11101111;
                     else
                         MQTTFlags = (MQTTFlags & 0b11011111) | 0b00010000;
                     goto chkEnd;
                 }
-            #endif
+#endif
             chkEnd:
-                ESP_LOGI(EC20_TAG, "Got data: %s", incomingData);
+                ESP_LOGD(EC20_TAG, "Got data: %s", incomingData);
             }
             taskYIELD();
         }
@@ -222,7 +245,8 @@ public:
     }
 
 #if CONFIG_EC20_ENABLE_MQTT
-    bool waitForMQTTRespone(uint8_t messageCode) {
+    bool waitForMQTTRespone(uint8_t messageCode)
+    {
         uint8_t check;
         uint8_t error;
         switch (messageCode)
@@ -250,15 +274,16 @@ public:
         return true;
     }
 
-    void reconnect() {
+    void reconnect()
+    {
         uart_write_bytes(EC20_PORT_NUM, "AT+QMTOPEN=0,\"demo.thingsboard.io\",1883\r\n", 41);
-        if(!waitForMQTTRespone(0))
+        if (!waitForMQTTRespone(0))
         {
             ESP_LOGE(EC20_TAG, "Connect Failed");
             return;
         }
         uart_write_bytes(EC20_PORT_NUM, "AT+QMTCONN=0,\"asdf\",\"01234\"\r\n", 29);
-        if(!waitForMQTTRespone(1))
+        if (!waitForMQTTRespone(1))
         {
             ESP_LOGE(EC20_TAG, "Connect Failed");
             return;
@@ -287,22 +312,44 @@ public:
         {
             if (pauseGPS == false)
             {
-                sendAT("+QGPSLOC=1", false);
+                sendAT("+QGPSGNMEA=\"RMC\"", false);
             }
             if (stopGPS == true)
             {
                 sendAT("+QGPSEND");
                 vTaskDelete(NULL);
             }
-            vTaskDelay(500 / portTICK_RATE_MS);
+            vTaskDelay(1000 / portTICK_RATE_MS);
             taskYIELD();
+        }
+    }
+
+    void readGSPResponse(char *output)
+    {
+        char *NMEAIn = (char *)memchr(output, '$', strlen(output));
+        GPSData = nmea_parse(NMEAIn, strlen(NMEAIn), 0);
+        if (GPSData == NULL)
+        {
+            ESP_LOGE(EC20_TAG ,"Failed to parse the sentence!\n  Type: %.5s (%d), %d\n", NMEAIn + 1, nmea_get_type(NMEAIn), strlen(NMEAIn));
+        }
+        else
+        {
+            if (GPSData->errors != 0)
+            {
+                ESP_LOGI(EC20_TAG ,"WARN: The sentence struct contains parse errors!\n");
+            }
+            nmea_gprmc_s *pos = (nmea_gprmc_s *) GPSData;
+            this->latitude = pos->latitude.degrees + ((pos->latitude.minutes) / 60);
+            this->longitude = pos->longitude.degrees + ((pos->longitude.minutes) / 60);
+            ESP_LOGI(EC20_TAG ,"%f %f", longitude, latitude);
         }
     }
 #endif
 
 private:
     uint8_t connectFlags = 0; // {gotOk, gotError, GSM Mode Enabled, LTE mode enabled, GSM Connected, LTE connected}
-    uint8_t MQTTFlags = 0; // {Server Connect, Server Connect Error, MQTT Connect, MQTT Connect Error}
+    uint8_t MQTTFlags = 0;    // {Server Connect, Server Connect Error, MQTT Connect, MQTT Connect Error}
+    nmea_s *GPSData;
 };
 
 #endif
