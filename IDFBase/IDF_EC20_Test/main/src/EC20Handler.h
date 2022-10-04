@@ -274,6 +274,19 @@ public:
         return true;
     }
 
+    void connect()
+    {
+        pauseGPS = true;
+        this->sendAT("+QMTDISC=0");
+        this->sendAT("+QMTCFG=\"keepalive\",0,30");
+        this->sendAT("+QMTCFG=\"session\",0,1");
+        this->sendAT("+QMTCFG=\"will\",0,0,0,0");
+        this->sendAT("+QMTCFG=\"recv/mode\",0,0,1");
+        this->sendAT("+QMTCFG=\"send/mode\",0,0");
+        this->reconnect();
+        pauseGPS = false;
+    }
+
     void reconnect()
     {
         uart_write_bytes(EC20_PORT_NUM, "AT+QMTOPEN=0,\"demo.thingsboard.io\",1883\r\n", 41);
@@ -291,17 +304,15 @@ public:
         ESP_LOGI(EC20_TAG, "Thingsboard connected");
     }
 
-    void connect()
+    bool sendTelemetry(char* data, char* topic)
     {
-        pauseGPS = true;
-        this->sendAT("+QMTDISC=0");
-        this->sendAT("+QMTCFG=\"keepalive\",0,30");
-        this->sendAT("+QMTCFG=\"session\",0,1");
-        this->sendAT("+QMTCFG=\"will\",0,0,0,0");
-        this->sendAT("+QMTCFG=\"recv/mode\",0,0,1");
-        this->sendAT("+QMTCFG=\"send/mode\",0,0");
-        this->reconnect();
-        pauseGPS = false;
+        if(MQTTFlags & 0b00100000)
+        {
+            char sendBuffer[strlen(topic) + 35];
+            sprintf(sendBuffer, "AT+QTMPUBEX=0,0,0,0,\"%s\",%d\r\n", topic, strlen(data));
+            uart_write_bytes(EC20_PORT_NUM, sendBuffer, strlen(sendBuffer));
+        }
+        return false;
     }
 #endif
 
@@ -312,7 +323,8 @@ public:
         {
             if (pauseGPS == false)
             {
-                sendAT("+QGPSGNMEA=\"RMC\"", false);
+                if(!sendAT("+QGPSGNMEA=\"RMC\"", false))
+                    this->locationValid = false;
             }
             if (stopGPS == true)
             {
@@ -331,6 +343,7 @@ public:
         if (GPSData == NULL)
         {
             ESP_LOGE(EC20_TAG ,"Failed to parse the sentence!\n  Type: %.5s (%d), %d\n", NMEAIn + 1, nmea_get_type(NMEAIn), strlen(NMEAIn));
+            this->locationValid = false;
         }
         else
         {
@@ -341,15 +354,22 @@ public:
             nmea_gprmc_s *pos = (nmea_gprmc_s *) GPSData;
             this->latitude = pos->latitude.degrees + ((pos->latitude.minutes) / 60);
             this->longitude = pos->longitude.degrees + ((pos->longitude.minutes) / 60);
+            this->locationValid = true;
             ESP_LOGI(EC20_TAG ,"%f %f", longitude, latitude);
         }
     }
+
+    bool getLocationValid() {
+        return this->locationValid;
+    }
+
 #endif
 
 private:
     uint8_t connectFlags = 0; // {gotOk, gotError, GSM Mode Enabled, LTE mode enabled, GSM Connected, LTE connected}
     uint8_t MQTTFlags = 0;    // {Server Connect, Server Connect Error, MQTT Connect, MQTT Connect Error}
     nmea_s *GPSData;
+    bool locationValid = false;
 };
 
 #endif
