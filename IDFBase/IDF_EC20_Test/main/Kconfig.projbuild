@@ -49,4 +49,36 @@ menu "EC20 Configuration"
             help
                 Defines stack size for EC20. Insufficient stack size can cause crash.
     endmenu
+
+    menu "Custom MQTT Options"
+        config MQTT_DOMAIN
+            string "MQTT Domain"
+            default "demo.thingsboard.io"
+            help
+                Base url to which mqtt messages are sent
+
+        config MQTT_PORT
+            int "MQTT port"
+            default 1883
+            help
+                Port to which MQTT messages are sent
+            
+        config MQTT_USER
+            string "MQTT Username"
+            default "01234"
+            help
+                MQTT Username
+        
+        config MQTT_DEVICE
+            string "MQTT Client Name"
+            default "asdf"
+            help
+                MQTT Device Name
+        
+        config MQTT_TOPIC
+            string "MQTT Topic"
+            default "v1/devices/me/telemetry"
+            help
+                Telemetry topic to publish messages to
+    endmenu
 endmenu

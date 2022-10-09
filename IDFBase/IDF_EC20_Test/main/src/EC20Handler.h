@@ -1,5 +1,5 @@
-#ifndef UART_HANDLER_H
-#define UART_HANDLER_H
+#ifndef EC20_HANDLER_H
+#define EC20_HANDLER_H
 
 #include "Definations.h"
 
@@ -18,7 +18,6 @@ extern "C"
 #include "gpvtg.h"
 #include "gptxt.h"
 #include "gpgsv.h"
-
 }
 
 class EC20Handler
@@ -26,7 +25,7 @@ class EC20Handler
 public:
     int16_t incomingLen;
     char incomingData[BUF_SIZE];
-    
+
 #if CONFIG_EC20_ENABLE_GPS
     bool pauseGPS = true;
     bool stopGPS = false;
@@ -131,9 +130,33 @@ public:
                         MQTTFlags = (MQTTFlags & 0b11011111) | 0b00010000;
                     goto chkEnd;
                 }
+                output = strstr(incomingData, ">");
+                if (output)
+                {
+                    MQTTFlags = MQTTFlags | 0b00001000;
+                    goto chkEnd;
+                }
+                output = strstr(incomingData, "+QMTPUBEX");
+                if (output)
+                {
+                    if (output[15] == '0')
+                        MQTTFlags = MQTTFlags | 0b00000100;
+                    else
+                    {
+                        ESP_LOGE(EC20_TAG, "Failed to sent with code %c", output[15]);
+                        MQTTFlags = (MQTTFlags | 0b00010000) & (0b11011111);
+                    }
+                }
+                output = strstr(incomingData, "+QMTSTAT");
+                if (output)
+                {
+                    MQTTFlags = (MQTTFlags | 0b01010000) & (0b01011111);
+                    ESP_LOGE(EC20_TAG, "MQTT Connect Failed. Network reset needed.");
+                }
+
 #endif
             chkEnd:
-                ESP_LOGD(EC20_TAG, "Got data: %s", incomingData);
+                ESP_LOGI(EC20_TAG, "Got data: %s", incomingData);
             }
             taskYIELD();
         }
@@ -289,13 +312,17 @@ public:
 
     void reconnect()
     {
-        uart_write_bytes(EC20_PORT_NUM, "AT+QMTOPEN=0,\"demo.thingsboard.io\",1883\r\n", 41);
+        char messageBuffer[BUF_SIZE];
+        sprintf(messageBuffer, "AT+QMTOPEN=0,\"%s\",%d\r\n", TELEMETRY_DOMAIN, TELEMETRY_PORT);
+        uart_write_bytes(EC20_PORT_NUM, messageBuffer, strlen(messageBuffer));
         if (!waitForMQTTRespone(0))
         {
             ESP_LOGE(EC20_TAG, "Connect Failed");
             return;
         }
-        uart_write_bytes(EC20_PORT_NUM, "AT+QMTCONN=0,\"asdf\",\"01234\"\r\n", 29);
+        memset(messageBuffer, 0, BUF_SIZE);
+        sprintf(messageBuffer, "AT+QMTCONN=0,\"%s\",\"%s\"\r\n", TELEMETRY_DEVICE_NAME, TELEMETRY_USERNAME);
+        uart_write_bytes(EC20_PORT_NUM, messageBuffer, strlen(messageBuffer));
         if (!waitForMQTTRespone(1))
         {
             ESP_LOGE(EC20_TAG, "Connect Failed");
@@ -304,15 +331,46 @@ public:
         ESP_LOGI(EC20_TAG, "Thingsboard connected");
     }
 
-    bool sendTelemetry(char* data, char* topic)
+    bool sendTelemetry(char *data, char *topic)
     {
-        if(MQTTFlags & 0b00100000)
+        if (MQTTFlags & 0b00100000)
         {
-            char sendBuffer[strlen(topic) + 35];
-            sprintf(sendBuffer, "AT+QTMPUBEX=0,0,0,0,\"%s\",%d\r\n", topic, strlen(data));
+            char sendBuffer[BUF_SIZE];
+            sprintf(sendBuffer, "AT+QMTPUBEX=0,0,0,0,\"%s\",%d\r\n", topic, strlen(data));
             uart_write_bytes(EC20_PORT_NUM, sendBuffer, strlen(sendBuffer));
+            this->waitForReady();
+            uart_write_bytes(EC20_PORT_NUM, data, strlen(data));
+            uart_write_bytes(EC20_PORT_NUM, "\r\n", 2);
+            this->publishResponse();
+            return true;
         }
         return false;
+    }
+
+    void waitForReady()
+    {
+        while (1)
+        {
+            if ((MQTTFlags & 0b00001000) > 0)
+                break;
+            taskYIELD();
+            vTaskDelay(10 / portTICK_RATE_MS);
+        }
+    }
+
+    void publishResponse()
+    {
+        while (1)
+        {
+            if ((MQTTFlags & 0b00000100) > 0)
+                break;
+            if ((MQTTFlags & 0b00010000) > 0)
+            {
+                ESP_LOGE(EC20_TAG, "Publish Failed. Need to Reconnect");
+            }
+            taskYIELD();
+            vTaskDelay(10 / portTICK_RATE_MS);
+        }
     }
 #endif
 
@@ -323,7 +381,7 @@ public:
         {
             if (pauseGPS == false)
             {
-                if(!sendAT("+QGPSGNMEA=\"RMC\"", false))
+                if (!sendAT("+QGPSGNMEA=\"RMC\"", false))
                     this->locationValid = false;
             }
             if (stopGPS == true)
@@ -342,24 +400,28 @@ public:
         GPSData = nmea_parse(NMEAIn, strlen(NMEAIn), 0);
         if (GPSData == NULL)
         {
-            ESP_LOGE(EC20_TAG ,"Failed to parse the sentence!\n  Type: %.5s (%d), %d\n", NMEAIn + 1, nmea_get_type(NMEAIn), strlen(NMEAIn));
+            ESP_LOGE(EC20_TAG, "Failed to parse the sentence!\n  Type: %.5s (%d), %d\n", NMEAIn + 1, nmea_get_type(NMEAIn), strlen(NMEAIn));
             this->locationValid = false;
         }
         else
         {
             if (GPSData->errors != 0)
             {
-                ESP_LOGI(EC20_TAG ,"WARN: The sentence struct contains parse errors!\n");
+                ESP_LOGI(EC20_TAG, "WARN: The sentence struct contains parse errors!\n");
             }
-            nmea_gprmc_s *pos = (nmea_gprmc_s *) GPSData;
+            nmea_gprmc_s *pos = (nmea_gprmc_s *)GPSData;
             this->latitude = pos->latitude.degrees + ((pos->latitude.minutes) / 60);
             this->longitude = pos->longitude.degrees + ((pos->longitude.minutes) / 60);
-            this->locationValid = true;
-            ESP_LOGI(EC20_TAG ,"%f %f", longitude, latitude);
+            if (this->latitude != 0.00f && this->longitude != 0.00f)
+            {
+                this->locationValid = true;
+                ESP_LOGI(EC20_TAG, "%f %f", longitude, latitude);
+            }
         }
     }
 
-    bool getLocationValid() {
+    bool getLocationValid()
+    {
         return this->locationValid;
     }
 
@@ -367,7 +429,7 @@ public:
 
 private:
     uint8_t connectFlags = 0; // {gotOk, gotError, GSM Mode Enabled, LTE mode enabled, GSM Connected, LTE connected}
-    uint8_t MQTTFlags = 0;    // {Server Connect, Server Connect Error, MQTT Connect, MQTT Connect Error}
+    uint8_t MQTTFlags = 0;    // {Server Connect, Server Connect Error, MQTT Connect, MQTT Connect Error, ready to send, send Success}
     nmea_s *GPSData;
     bool locationValid = false;
 };

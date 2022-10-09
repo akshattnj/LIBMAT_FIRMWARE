@@ -147,6 +147,16 @@ CONFIG_EC20_RXD=16
 CONFIG_EC20_TXD=17
 CONFIG_EC20_STACK_SIZE=4096
 # end of EC20 UART OPTIONS
+
+#
+# Custom MQTT Options
+#
+CONFIG_MQTT_DOMAIN="demo.thingsboard.io"
+CONFIG_MQTT_PORT=1883
+CONFIG_MQTT_USER="01234"
+CONFIG_MQTT_DEVICE="asdf"
+CONFIG_MQTT_TOPIC="v1/devices/me/telemetry"
+# end of Custom MQTT Options
 # end of EC20 Configuration
 
 #

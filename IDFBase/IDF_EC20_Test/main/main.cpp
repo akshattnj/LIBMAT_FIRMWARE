@@ -11,6 +11,7 @@
 
 #include "src/Definations.h"
 #include "src/EC20Handler.h"
+#include "src/TelemetryHandler.h"
 
 extern "C"
 {
@@ -23,6 +24,7 @@ extern "C"
 }
 
 EC20Handler testEC20;
+TelemetryHandler telemetryHandler(&testEC20);
 
 extern "C" void app_main(void)
 {
@@ -31,7 +33,7 @@ extern "C" void app_main(void)
                 { testEC20.portListner(); },
                 "EC20 Reader", 2048, NULL, 10, NULL);
     testEC20.setup();
-    
+
 #if CONFIG_EC20_ENABLE_GPS
     xTaskCreate([](void *args)
                 { testEC20.getGPSData(args); },
@@ -40,10 +42,14 @@ extern "C" void app_main(void)
 
 #if CONFIG_EC20_ENABLE_MQTT
     testEC20.connect();
+    xTaskCreate([](void *args)
+                { telemetryHandler.sendTelemetry(); },
+                "Telemetry", 2048, NULL, 10, NULL);
+#endif
+
     while (1)
     {
         vTaskDelay(1000 / portTICK_RATE_MS);
         taskYIELD();
     }
-#endif
 }
