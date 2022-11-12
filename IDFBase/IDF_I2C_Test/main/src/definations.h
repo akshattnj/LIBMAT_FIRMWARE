@@ -1,6 +1,14 @@
+#ifndef DEFINATIONS_H
+#define DEFINATIONS_H
+
 #define SDA_0_PIN CONFIG_I2C_0_SDA
 #define SCL_0_PIN CONFIG_I2C_0_SCL
+#define I2C_0_CLOCK CONFIG_I2C_0_SPEED
+#define AHT_ADDRESS 0x38
+#define MPU_ADDRESS 0x68
 
 #define BUF_SIZE 1024
 
 #define MAIN_TAG "MAIN"
+
+#endif
