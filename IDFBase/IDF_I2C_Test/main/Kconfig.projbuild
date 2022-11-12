@@ -1,0 +1,13 @@
+menu "Custom I2C Configuration"
+
+    config I2C_0_SDA
+        int "I2C 0 SDA Pin"
+        range 0 35
+        default 21
+
+    config I2C_0_SCL
+        int "I2C 0 SDA Pin"
+        range 0 35
+        default 22
+
+endmenu

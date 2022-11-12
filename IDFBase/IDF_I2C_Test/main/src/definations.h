@@ -1,0 +1,6 @@
+#define SDA_0_PIN CONFIG_I2C_0_SDA
+#define SCL_0_PIN CONFIG_I2C_0_SCL
+
+#define BUF_SIZE 1024
+
+#define MAIN_TAG "MAIN"
