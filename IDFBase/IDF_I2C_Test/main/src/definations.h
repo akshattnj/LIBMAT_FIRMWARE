@@ -4,11 +4,14 @@
 #define SDA_0_PIN CONFIG_I2C_0_SDA
 #define SCL_0_PIN CONFIG_I2C_0_SCL
 #define I2C_0_CLOCK CONFIG_I2C_0_SPEED
-#define AHT_ADDRESS 0x38
+#define I2C_WRITE_BUFFER 10
+#define I2C_READ_BUFFER 20
+#define ATH_ADDRESS 0x38
 #define MPU_ADDRESS 0x68
 
 #define BUF_SIZE 1024
 
 #define MAIN_TAG "MAIN"
+#define I2C_TAG "I2C"
 
 #endif
