@@ -18,6 +18,8 @@ public:
     i2c_config_t config;
     const int sdaPin;
     const int sclPin;
+    double humidity;
+    double temperature;
 
     I2CHandler(i2c_port_t portNum, int sdaPin, int sclPin, uint32_t clock) : portNum(portNum), sdaPin(sdaPin), sclPin(sclPin)
     {
@@ -85,13 +87,9 @@ public:
                     ESP_LOGI(I2C_TAG, "ATH sensor busy");
                     goto checkStatusATH;
                 }
-                if (this->readI2C(ATH_ADDRESS, 6))
+                if (this->readI2C(ATH_ADDRESS, 7))
                 {
-                    for (int i = 0; i < I2C_READ_BUFFER; i++)
-                    {
-                        printf("%X ", this->readBuffer[i]);
-                    }
-                    printf("\n");
+                    this->calculateTemperatureAndHumidity();
                 }
             }
             vTaskDelay(1000 / portTICK_RATE_MS);
@@ -104,6 +102,7 @@ private:
     uint8_t writeBuffer[I2C_WRITE_BUFFER];
     uint8_t readBuffer[I2C_READ_BUFFER];
     esp_err_t espError;
+    const double inv2Pow20 = 1.0 / 1048576.0;
 
     bool readWriteI2C(uint8_t address, size_t writeSize, size_t readSize)
     {
@@ -137,6 +136,15 @@ private:
             return false;
         }
         return true;
+    }
+
+    void calculateTemperatureAndHumidity()
+    {
+        uint32_t humidityRaw = (this->readBuffer[1] << 12) | (this->readBuffer[2] << 4) | (this->readBuffer[3] >> 4);
+        uint32_t temperatureRaw = ((this->readBuffer[3] & 0x0F) << 16) | (this->readBuffer[4] << 8) | (this->readBuffer[5]);
+        this->humidity = humidityRaw * inv2Pow20 * 100;
+        this->temperature = (temperatureRaw * inv2Pow20 * 200) - 50;
+        ESP_LOGI(I2C_TAG, "Got temperature %f and humidity %f\nDebug: %X %X", this->temperature, this->humidity, humidityRaw, temperatureRaw);
     }
 };
 
