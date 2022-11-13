@@ -58,7 +58,7 @@ public:
      */
     void setupAHT(uint8_t address)
     {
-        writeBuffer[0] = 0x71;
+        this->writeBuffer[0] = 0x71;
         memset(this->readBuffer, 0, sizeof(readBuffer));
 
         if (!(this->readWriteI2C(address, 1, 1)))
@@ -67,9 +67,9 @@ public:
         if (!(readBuffer[0] & 0b00001000))
         {
             ESP_LOGI(I2C_TAG, "AHT is uncalibrated with response: %d. Initialising...", readBuffer[0]);
-            writeBuffer[0] = 0xbe;
-            writeBuffer[1] = 0x08;
-            writeBuffer[2] = 0x00;
+            this->writeBuffer[0] = 0xbe;
+            this->writeBuffer[1] = 0x08;
+            this->writeBuffer[2] = 0x00;
             if (!(this->writeI2C(address, 1)))
                 return;
         }
@@ -110,7 +110,66 @@ public:
         if (!(this->writeI2C(address, 2)))
             return;
 
+        this->getMPUOffsets(address);
+
         ESP_LOGI(I2C_TAG, "MPU6050 Setup Complete");
+    }
+
+    void setMPUGyroOffsets(float x, float y, float z)
+    {
+        this->gyroXoffset = x;
+        this->gyroYoffset = y;
+        this->gyroZoffset = z;
+    }
+
+    void setMPUAcclOffsets(float x, float y, float z)
+    {
+        this->accXoffset = x;
+        this->accYoffset = y;
+        this->accZoffset = z;
+    }
+
+    void getMPUOffsets(uint8_t address)
+    {
+        ESP_LOGI(I2C_TAG, "Offsets not predefined. Calculating offsets");
+        this->setMPUAcclOffsets(0, 0, 0);
+        this->setMPUGyroOffsets(0, 0, 0);
+        float ag[6] = {0, 0, 0, 0, 0, 0};
+        for (int i = 0; i < CALIB_OFFSET_NB_MES; i++)
+        {
+            this->getMPUData(address);
+            ag[0] += accX;
+            ag[1] += accY;
+            ag[2] += (accZ - 1.0);
+            ag[3] += gyroX;
+            ag[4] += gyroY;
+            ag[5] += gyroZ;
+            vTaskDelay(1 / portTICK_RATE_MS);
+
+            accXoffset = ag[0] / CALIB_OFFSET_NB_MES;
+            accYoffset = ag[1] / CALIB_OFFSET_NB_MES;
+            accZoffset = ag[2] / CALIB_OFFSET_NB_MES;
+
+            gyroXoffset = ag[3] / CALIB_OFFSET_NB_MES;
+            gyroYoffset = ag[4] / CALIB_OFFSET_NB_MES;
+            gyroZoffset = ag[5] / CALIB_OFFSET_NB_MES;
+        }
+    }
+
+    void getMPUData(uint8_t address)
+    {
+        this->writeBuffer[0] = MPU6050_ACCEL_OUT_REGISTER;
+        if (!(this->readWriteI2C(address, 1, 14)))
+            return;
+        uint16_t rawData[7];
+        accX = ((float)rawData[0]) / accLSBtoG - accXoffset;
+        accY = ((float)rawData[1]) / accLSBtoG - accYoffset;
+        accZ = ((float)rawData[2]) / accLSBtoG - accZoffset;
+        temp = (rawData[3] + TEMP_LSB_OFFSET) / TEMP_LSB_2_DEGREE;
+        gyroX = ((float)rawData[4]) / gyroLSBtoDegsec - gyroXoffset;
+        gyroY = ((float)rawData[5]) / gyroLSBtoDegsec - gyroYoffset;
+        gyroZ = ((float)rawData[6]) / gyroLSBtoDegsec - gyroZoffset;
+        ESP_LOGD(I2C_TAG, "%f %f %f %f %f %f %f", accX, accY, accZ, gyroX, gyroY, gyroZ, temp);
     }
 
     /**
@@ -147,18 +206,28 @@ public:
     }
 
 private:
-    // 7 - AHT ON, 6 - Free, 5 - Free, 4 - Free, 3- Free, 2 - Free, 1 - Free, 0 - Free
-    uint8_t sensorStatus;
-    uint8_t writeBuffer[I2C_WRITE_BUFFER];
-    uint8_t readBuffer[I2C_READ_BUFFER];
-    esp_err_t espError;
-    const double inv2Pow20 = 1.0 / 1048576.0;
-    float gyroLSBtoDegsec;
-    float accLSBtoG;
+    // General I2C variables
     const i2c_port_t portNum;
     i2c_config_t config;
     const int sdaPin;
     const int sclPin;
+    uint8_t sensorStatus; // 7 - AHT ON, 6 - Free, 5 - Free, 4 - Free, 3- Free, 2 - Free, 1 - Free, 0 - Free
+
+    // I2C Communication Variables
+    uint8_t writeBuffer[I2C_WRITE_BUFFER];
+    uint8_t readBuffer[I2C_READ_BUFFER];
+    esp_err_t espError;
+
+    // AHT Variable
+    const double inv2Pow20 = 1.0 / 1048576.0;
+
+    // MPU6050 Variables
+    float gyroXoffset, gyroYoffset, gyroZoffset;
+    float accXoffset, accYoffset, accZoffset;
+    float temp, accX, accY, accZ, gyroX, gyroY, gyroZ;
+    float angleAccX, angleAccY;
+    float angleX, angleY, angleZ;
+    float gyroLSBtoDegsec, accLSBtoG;
 
     /**
      * @brief Select I2C register to read form and wait for response
@@ -231,6 +300,15 @@ private:
         this->humidity = humidityRaw * inv2Pow20 * 100;
         this->temperature = (temperatureRaw * inv2Pow20 * 200) - 50;
         ESP_LOGI(I2C_TAG, "Got temperature %f and humidity %f\nDebug: %X %X", this->temperature, this->humidity, humidityRaw, temperatureRaw);
+    }
+
+    float wrap(float angle, float limit)
+    {
+        while (angle > limit)
+            angle -= 2 * limit;
+        while (angle < -limit)
+            angle += 2 * limit;
+        return angle;
     }
 };
 
