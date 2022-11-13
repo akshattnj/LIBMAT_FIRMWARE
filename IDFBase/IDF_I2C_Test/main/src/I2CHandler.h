@@ -66,6 +66,33 @@ public:
 
     void setupMPU(uint8_t address)
     {
+        this->writeBuffer[0] = MPU6050_PWR_MGMT_1_REGISTER;
+        this->writeBuffer[1] = 0x01;
+        if (!(this->writeI2C(address, 2)))
+            return;
+
+        this->writeBuffer[0] = MPU6050_SMPLRT_DIV_REGISTER;
+        this->writeBuffer[1] = 0x00;
+        if (!(this->writeI2C(address, 2)))
+            return;
+
+        this->writeBuffer[0] = MPU6050_CONFIG_REGISTER;
+        if (!(this->writeI2C(address, 2)))
+            return;
+
+        gyroLSBtoDegsec = 65.5;
+        this->writeBuffer[0] = MPU6050_GYRO_CONFIG_REGISTER;
+        this->writeBuffer[1] = 0x08;
+        if (!(this->writeI2C(address, 2)))
+            return;
+
+        accLSBtoG = 16384.0;
+        this->writeBuffer[0] = MPU6050_ACCEL_CONFIG_REGISTER;
+        this->writeBuffer[1] = 0x00;
+        if (!(this->writeI2C(address, 2)))
+            return;
+        
+        ESP_LOGI(I2C_TAG, "MPU6050 Setup Complete");
     }
 
     void updateI2C(void *args)
@@ -103,6 +130,8 @@ private:
     uint8_t readBuffer[I2C_READ_BUFFER];
     esp_err_t espError;
     const double inv2Pow20 = 1.0 / 1048576.0;
+    float gyroLSBtoDegsec;
+    float accLSBtoG;
 
     bool readWriteI2C(uint8_t address, size_t writeSize, size_t readSize)
     {
