@@ -2,6 +2,8 @@
 #define I2C_HANDLER_H
 
 #include "definations.h"
+#include <initializer_list>
+
 extern "C"
 {
 #include <stdio.h>
@@ -58,19 +60,13 @@ public:
      */
     void setupAHT(uint8_t address)
     {
-        this->writeBuffer[0] = 0x71;
-        memset(this->readBuffer, 0, sizeof(readBuffer));
-
-        if (!(this->readWriteI2C(address, 1, 1)))
+        if (!(this->readWriteI2C(address, this->AHTStatusCommand, 1, 1)))
             return;
 
         if (!(readBuffer[0] & 0b00001000))
         {
             ESP_LOGI(I2C_TAG, "AHT is uncalibrated with response: %d. Initialising...", readBuffer[0]);
-            this->writeBuffer[0] = 0xbe;
-            this->writeBuffer[1] = 0x08;
-            this->writeBuffer[2] = 0x00;
-            if (!(this->writeI2C(address, 1)))
+            if (!(this->writeI2C(address, this->AHTCalibrateCommand, 1)))
                 return;
         }
         this->sensorStatus = this->sensorStatus | 0b10000000;
@@ -84,93 +80,9 @@ public:
      */
     void setupMPU(uint8_t address)
     {
-        this->writeBuffer[0] = MPU6050_PWR_MGMT_1_REGISTER;
-        this->writeBuffer[1] = 0x01;
-        if (!(this->writeI2C(address, 2)))
-            return;
-
-        this->writeBuffer[0] = MPU6050_SMPLRT_DIV_REGISTER;
-        this->writeBuffer[1] = 0x00;
-        if (!(this->writeI2C(address, 2)))
-            return;
-
-        this->writeBuffer[0] = MPU6050_CONFIG_REGISTER;
-        if (!(this->writeI2C(address, 2)))
-            return;
-
-        gyroLSBtoDegsec = 65.5;
-        this->writeBuffer[0] = MPU6050_GYRO_CONFIG_REGISTER;
-        this->writeBuffer[1] = 0x08;
-        if (!(this->writeI2C(address, 2)))
-            return;
-
-        accLSBtoG = 16384.0;
-        this->writeBuffer[0] = MPU6050_ACCEL_CONFIG_REGISTER;
-        this->writeBuffer[1] = 0x00;
-        if (!(this->writeI2C(address, 2)))
-            return;
-
-        this->getMPUOffsets(address);
-
         ESP_LOGI(I2C_TAG, "MPU6050 Setup Complete");
     }
 
-    void setMPUGyroOffsets(float x, float y, float z)
-    {
-        this->gyroXoffset = x;
-        this->gyroYoffset = y;
-        this->gyroZoffset = z;
-    }
-
-    void setMPUAcclOffsets(float x, float y, float z)
-    {
-        this->accXoffset = x;
-        this->accYoffset = y;
-        this->accZoffset = z;
-    }
-
-    void getMPUOffsets(uint8_t address)
-    {
-        ESP_LOGI(I2C_TAG, "Offsets not predefined. Calculating offsets");
-        this->setMPUAcclOffsets(0, 0, 0);
-        this->setMPUGyroOffsets(0, 0, 0);
-        float ag[6] = {0, 0, 0, 0, 0, 0};
-        for (int i = 0; i < CALIB_OFFSET_NB_MES; i++)
-        {
-            this->getMPUData(address);
-            ag[0] += accX;
-            ag[1] += accY;
-            ag[2] += (accZ - 1.0);
-            ag[3] += gyroX;
-            ag[4] += gyroY;
-            ag[5] += gyroZ;
-            vTaskDelay(1 / portTICK_RATE_MS);
-
-            accXoffset = ag[0] / CALIB_OFFSET_NB_MES;
-            accYoffset = ag[1] / CALIB_OFFSET_NB_MES;
-            accZoffset = ag[2] / CALIB_OFFSET_NB_MES;
-
-            gyroXoffset = ag[3] / CALIB_OFFSET_NB_MES;
-            gyroYoffset = ag[4] / CALIB_OFFSET_NB_MES;
-            gyroZoffset = ag[5] / CALIB_OFFSET_NB_MES;
-        }
-    }
-
-    void getMPUData(uint8_t address)
-    {
-        this->writeBuffer[0] = MPU6050_ACCEL_OUT_REGISTER;
-        if (!(this->readWriteI2C(address, 1, 14)))
-            return;
-        uint16_t rawData[7];
-        accX = ((float)rawData[0]) / accLSBtoG - accXoffset;
-        accY = ((float)rawData[1]) / accLSBtoG - accYoffset;
-        accZ = ((float)rawData[2]) / accLSBtoG - accZoffset;
-        temp = (rawData[3] + TEMP_LSB_OFFSET) / TEMP_LSB_2_DEGREE;
-        gyroX = ((float)rawData[4]) / gyroLSBtoDegsec - gyroXoffset;
-        gyroY = ((float)rawData[5]) / gyroLSBtoDegsec - gyroYoffset;
-        gyroZ = ((float)rawData[6]) / gyroLSBtoDegsec - gyroZoffset;
-        ESP_LOGD(I2C_TAG, "%f %f %f %f %f %f %f", accX, accY, accZ, gyroX, gyroY, gyroZ, temp);
-    }
 
     /**
      * @brief Update data from connected I2C device. To be used inside task.
@@ -183,14 +95,10 @@ public:
         {
             if (this->sensorStatus & 0b10000000)
             {
-                this->writeBuffer[0] = 0xAC;
-                this->writeBuffer[1] = 0x33;
-                this->writeBuffer[2] = 0x00;
-                this->writeI2C(AHT_ADDRESS, 3);
+                this->writeI2C(AHT_ADDRESS, this->AHTMeasureCommand, 3);
                 vTaskDelay(80 / portTICK_RATE_MS);
-                this->writeBuffer[0] = 0x71;
             checkStatusAHT:
-                this->readWriteI2C(AHT_ADDRESS, 1, 1);
+                this->readWriteI2C(AHT_ADDRESS, this->AHTStatusCommand, 1, 1);
                 if (this->readBuffer[0] & 0b10000000)
                 {
                     ESP_LOGI(I2C_TAG, "AHT sensor busy");
@@ -214,33 +122,28 @@ private:
     uint8_t sensorStatus; // 7 - AHT ON, 6 - Free, 5 - Free, 4 - Free, 3- Free, 2 - Free, 1 - Free, 0 - Free
 
     // I2C Communication Variables
-    uint8_t writeBuffer[I2C_WRITE_BUFFER];
     uint8_t readBuffer[I2C_READ_BUFFER];
     esp_err_t espError;
 
     // AHT Variable
+    const uint8_t AHTStatusCommand[1] = {0x71};
+    const uint8_t AHTCalibrateCommand[3] = {0xBE, 0x08, 0x00};
+    const uint8_t AHTMeasureCommand[3] = {0xAC, 0x33, 0x00};
     const double inv2Pow20 = 1.0 / 1048576.0;
-
-    // MPU6050 Variables
-    float gyroXoffset, gyroYoffset, gyroZoffset;
-    float accXoffset, accYoffset, accZoffset;
-    float temp, accX, accY, accZ, gyroX, gyroY, gyroZ;
-    float angleAccX, angleAccY;
-    float angleX, angleY, angleZ;
-    float gyroLSBtoDegsec, accLSBtoG;
 
     /**
      * @brief Select I2C register to read form and wait for response
      *
      * @param address Address of I2C device
+     * @param toWrite Pointer to array that is to be written to I2C device
      * @param writeSize Size of data to be written to device
      * @param readSize Size of data to be read from device
      * @return true if communication successful
      * @return false if communication failed
      */
-    bool readWriteI2C(uint8_t address, size_t writeSize, size_t readSize)
+    bool readWriteI2C(uint8_t address, const uint8_t* toWrite, size_t writeSize, size_t readSize)
     {
-        this->espError = i2c_master_write_read_device(I2C_NUM_0, address, this->writeBuffer, writeSize, readBuffer, readSize, 100 / portTICK_RATE_MS);
+        this->espError = i2c_master_write_read_device(I2C_NUM_0, address, toWrite, writeSize, readBuffer, readSize, 100 / portTICK_RATE_MS);
         if (espError > 0)
         {
             ESP_LOGE(I2C_TAG, "I2C read-write error on AHT21B with code: %d", espError);
@@ -277,9 +180,9 @@ private:
      * @return true if communication is successful
      * @return false if communication failed
      */
-    bool writeI2C(uint8_t address, size_t writeSize)
+    bool writeI2C(uint8_t address, const uint8_t* toWrite, size_t writeSize)
     {
-        this->espError = i2c_master_write_to_device(this->portNum, address, this->writeBuffer, writeSize, 100 / portTICK_RATE_MS);
+        this->espError = i2c_master_write_to_device(this->portNum, address, (uint8_t*)toWrite, writeSize, 100 / portTICK_RATE_MS);
         if (this->espError > 0)
         {
             ESP_LOGE(I2C_TAG, "Communication failure with AHT with code:%d", this->espError);
@@ -300,15 +203,6 @@ private:
         this->humidity = humidityRaw * inv2Pow20 * 100;
         this->temperature = (temperatureRaw * inv2Pow20 * 200) - 50;
         ESP_LOGI(I2C_TAG, "Got temperature %f and humidity %f\nDebug: %X %X", this->temperature, this->humidity, humidityRaw, temperatureRaw);
-    }
-
-    float wrap(float angle, float limit)
-    {
-        while (angle > limit)
-            angle -= 2 * limit;
-        while (angle < -limit)
-            angle += 2 * limit;
-        return angle;
     }
 };
 
