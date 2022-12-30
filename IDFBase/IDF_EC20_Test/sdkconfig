@@ -160,6 +160,14 @@ CONFIG_MQTT_TOPIC="v1/devices/me/telemetry"
 # end of EC20 Configuration
 
 #
+# Custom I2C Configuration
+#
+CONFIG_I2C_0_SDA=21
+CONFIG_I2C_0_SCL=22
+CONFIG_I2C_0_SPEED=100000
+# end of Custom I2C Configuration
+
+#
 # Compiler options
 #
 CONFIG_COMPILER_OPTIMIZATION_DEFAULT=y

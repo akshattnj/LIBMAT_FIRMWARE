@@ -82,3 +82,21 @@ menu "EC20 Configuration"
                 Telemetry topic to publish messages to
     endmenu
 endmenu
+
+menu "Custom I2C Configuration"
+
+    config I2C_0_SDA
+        int "I2C 0 SDA Pin"
+        range 0 35
+        default 21
+
+    config I2C_0_SCL
+        int "I2C 0 SDA Pin"
+        range 0 35
+        default 22
+    
+    config I2C_0_SPEED
+        int "I2C 0 data transfer speed"
+        range 0 4000000
+        default 100000
+endmenu
