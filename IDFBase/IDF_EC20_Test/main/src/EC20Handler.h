@@ -81,12 +81,12 @@ public:
                 char *output = strstr(incomingData, "OK");
                 if (output)
                 {
-                    connectFlags = connectFlags | 0b10000000;
+                    connectFlags = connectFlags | GOT_OK;
                 }
                 output = strstr(incomingData, "ERROR");
                 if (output)
                 {
-                    connectFlags = connectFlags | 0b01000000;
+                    connectFlags = connectFlags | GOT_ERROR;
                     ESP_LOGE(EC20_TAG, "Got Error communication with EC20:\n%s", incomingData);
                 }
                 output = strstr(incomingData, "+CGREG:");
@@ -116,41 +116,41 @@ public:
                 if (output)
                 {
                     if (output[12] == '0')
-                        MQTTFlags = (MQTTFlags | 0b10000000) & 0b10111111;
+                        MQTTFlags = (MQTTFlags | SERVER_CONNECT) & (~SERVER_ERROR);
                     else
-                        MQTTFlags = (MQTTFlags & 0b01111111) | 0b01000000;
+                        MQTTFlags = (MQTTFlags & (~SERVER_CONNECT)) | SERVER_ERROR;
                     goto chkEnd;
                 }
                 output = strstr(incomingData, "+QMTCONN");
                 if (output)
                 {
                     if (output[12] == '0')
-                        MQTTFlags = (MQTTFlags | 0b00100000) & 0b11101111;
+                        MQTTFlags = (MQTTFlags | MQTT_CONNECT) & (~MQTT_ERROR);
                     else
-                        MQTTFlags = (MQTTFlags & 0b11011111) | 0b00010000;
+                        MQTTFlags = (MQTTFlags & (~MQTT_CONNECT)) | MQTT_ERROR;
                     goto chkEnd;
                 }
                 output = strstr(incomingData, ">");
                 if (output)
                 {
-                    MQTTFlags = MQTTFlags | 0b00001000;
+                    MQTTFlags = MQTTFlags | SEND_READY;
                     goto chkEnd;
                 }
                 output = strstr(incomingData, "+QMTPUBEX");
                 if (output)
                 {
                     if (output[15] == '0')
-                        MQTTFlags = MQTTFlags | 0b00000100;
+                        MQTTFlags = MQTTFlags | SEND_SUCCESS;
                     else
                     {
                         ESP_LOGE(EC20_TAG, "Failed to sent with code %c", output[15]);
-                        MQTTFlags = (MQTTFlags | 0b00010000) & (0b11011111);
+                        MQTTFlags = (MQTTFlags | MQTT_ERROR) & (~MQTT_CONNECT);
                     }
                 }
                 output = strstr(incomingData, "+QMTSTAT");
                 if (output)
                 {
-                    MQTTFlags = (MQTTFlags | 0b01010000) & (0b01011111);
+                    MQTTFlags = (MQTTFlags | SERVER_ERROR | MQTT_ERROR) & (~SERVER_CONNECT) & (~MQTT_CONNECT);
                     ESP_LOGE(EC20_TAG, "MQTT Connect Failed. Network reset needed.");
                 }
 
@@ -165,16 +165,16 @@ public:
     bool waitForOk(uint64_t messageDelay)
     {
         int64_t startWait = esp_timer_get_time();
-        while ((connectFlags & 0b10000000) == 0)
+        while ((connectFlags & GOT_OK) == 0)
         {
             vTaskDelay(10 / portTICK_RATE_MS);
             if (esp_timer_get_time() - startWait >= messageDelay)
                 return false;
-            if ((connectFlags & 0b01000000) > 0)
+            if ((connectFlags & GOT_ERROR) > 0)
                 return false;
             taskYIELD();
         }
-        connectFlags = connectFlags & 0b01111111;
+        connectFlags = connectFlags & (~GOT_OK);
         return true;
     }
 
@@ -189,9 +189,9 @@ public:
         {
             while (!this->waitForOk(messageDealy))
             {
-                if ((connectFlags & 0b01000000) > 0)
+                if ((connectFlags & GOT_ERROR) > 0)
                 {
-                    connectFlags = connectFlags & 0b10111111;
+                    connectFlags = connectFlags & (~GOT_ERROR);
                     vTaskDelay(100 / portTICK_RATE_MS);
                 }
                 ESP_LOGE(EC20_TAG, "Failed to communicate with EC20. Sending %s again", data);
@@ -207,9 +207,9 @@ public:
             {
                 if (this->waitForOk(messageDealy))
                     return true;
-                if ((connectFlags & 0b01000000) > 0)
+                if ((connectFlags & GOT_ERROR) > 0)
                 {
-                    connectFlags = connectFlags & 0b10111111;
+                    connectFlags = connectFlags & (~GOT_ERROR);
                     return false;
                 }
                 ESP_LOGE(EC20_TAG, "Failed to communicate with EC20. Sending %s again", data);
@@ -229,39 +229,39 @@ public:
         if (enabled)
         {
             ESP_LOGI(EC20_TAG, "Mode enabled");
-            connectFlags = LTE ? connectFlags | 0b00010000 : connectFlags | 0b00100000;
+            connectFlags = LTE ? connectFlags | LTE_MODE : connectFlags | GSM_MODE;
         }
         else
         {
             ESP_LOGI(EC20_TAG, "Mode not enabled");
-            connectFlags = LTE ? connectFlags & 0b11101111 : connectFlags & 0b11011111;
+            connectFlags = LTE ? connectFlags & (~LTE_MODE) : connectFlags & (~GSM_MODE);
         }
         uint8_t regStatus = output[10] - '0';
         switch (regStatus)
         {
         case 0:
             ESP_LOGI(EC20_TAG, "Not Registered, not searching");
-            connectFlags = LTE ? connectFlags & 0b11111011 : connectFlags & 0b11110111;
+            connectFlags = LTE ? connectFlags & (~LTE_CONNECT) : connectFlags & (~GSM_CONNECT);
             break;
         case 1:
             ESP_LOGI(EC20_TAG, "Registered, Home");
-            connectFlags = LTE ? connectFlags | 0b00000100 : connectFlags | 0b00001000;
+            connectFlags = LTE ? connectFlags | (LTE_CONNECT) : connectFlags | (GSM_CONNECT);
             break;
         case 2:
             ESP_LOGI(EC20_TAG, "Not Registered, Searching");
-            connectFlags = LTE ? connectFlags & 0b11111011 : connectFlags & 0b11110111;
+            connectFlags = LTE ? connectFlags & (~LTE_CONNECT) : connectFlags & (~GSM_CONNECT);
             break;
         case 3:
             ESP_LOGI(EC20_TAG, "Not Registered, Denied");
-            connectFlags = LTE ? connectFlags & 0b11111011 : connectFlags & 0b11110111;
+            connectFlags = LTE ? connectFlags & (~LTE_CONNECT) : connectFlags & (~GSM_CONNECT);
             break;
         case 4:
             ESP_LOGI(EC20_TAG, "Unknown, Sim may not support mode");
-            connectFlags = LTE ? connectFlags & 0b11111011 : connectFlags & 0b11110111;
+            connectFlags = LTE ? connectFlags & (~LTE_CONNECT) : connectFlags & (~GSM_CONNECT);
             break;
         case 5:
             ESP_LOGI(EC20_TAG, "Registered, Roaming");
-            connectFlags = LTE ? connectFlags | 0b00000100 : connectFlags | 0b00001000;
+            connectFlags = LTE ? connectFlags | (LTE_CONNECT) : connectFlags | (GSM_CONNECT);
         default:
             break;
         }
@@ -275,12 +275,12 @@ public:
         switch (messageCode)
         {
         case 0:
-            check = 0b10000000;
-            error = 0b01000000;
+            check = SERVER_CONNECT;
+            error = SERVER_ERROR;
             break;
         case 1:
-            check = 0b00100000;
-            error = 0b00010000;
+            check = MQTT_CONNECT;
+            error = MQTT_ERROR;
             break;
         default:
             break;
@@ -333,7 +333,7 @@ public:
 
     bool sendTelemetry(char *data, char *topic)
     {
-        if (MQTTFlags & 0b00100000)
+        if (MQTTFlags & MQTT_CONNECT)
         {
             char sendBuffer[BUF_SIZE];
             sprintf(sendBuffer, "AT+QMTPUBEX=0,0,0,0,\"%s\",%d\r\n", topic, strlen(data));
@@ -351,7 +351,7 @@ public:
     {
         while (1)
         {
-            if ((MQTTFlags & 0b00001000) > 0)
+            if ((MQTTFlags & SEND_READY) > 0)
                 break;
             taskYIELD();
             vTaskDelay(10 / portTICK_RATE_MS);
@@ -362,9 +362,9 @@ public:
     {
         while (1)
         {
-            if ((MQTTFlags & 0b00000100) > 0)
+            if ((MQTTFlags & SEND_SUCCESS) > 0)
                 break;
-            if ((MQTTFlags & 0b00010000) > 0)
+            if ((MQTTFlags & MQTT_ERROR) > 0)
             {
                 ESP_LOGE(EC20_TAG, "Publish Failed. Need to Reconnect");
             }
