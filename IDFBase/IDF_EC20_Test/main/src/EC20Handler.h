@@ -375,6 +375,11 @@ public:
 #endif
 
 #if CONFIG_EC20_ENABLE_GPS
+/**
+ * @brief Task to send GPS location request to EC20 module
+ * 
+ * @param args Task arguments if any - NULL in this case
+ */
     void getGPSData(void *args)
     {
         while (1)
@@ -394,6 +399,11 @@ public:
         }
     }
 
+    /**
+     * @brief Parse GPS response from EC20
+     * 
+     * @param output Data retrieved from EC20 module
+     */
     void readGSPResponse(char *output)
     {
         char *NMEAIn = (char *)memchr(output, '$', strlen(output));
@@ -419,7 +429,12 @@ public:
             }
         }
     }
-
+/**
+ * @brief Get the Location Valid object
+ * 
+ * @return true 
+ * @return false 
+ */
     bool getLocationValid()
     {
         return this->locationValid;
