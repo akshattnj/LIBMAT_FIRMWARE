@@ -7,13 +7,29 @@ extern "C"
 #include <stdio.h>
 }
 #include <string.h>
-#include "src/I2CHandler.h"
 #include "src/definations.h"
 
-I2CHandler handleI2C0(I2C_NUM_0, SDA_0_PIN, SCL_0_PIN, I2C_0_CLOCK);
+#ifdef SCANNER_MODE
+
+#include "src/I2C_Scanner.h"
 
 extern "C" void app_main(void)
 {
-    handleI2C0.setup();
-    handleI2C0.updateI2C(NULL);
+    xTaskCreatePinnedToCore(task, "Scanner", 2048, NULL, 12, NULL, 1);
 }
+
+#else
+
+#include "src/I2CHandler.h"
+
+I2CHandler handleI2C(I2C_NUM_0, SDA_0_PIN, SCL_0_PIN, I2C_0_CLOCK);
+
+extern "C" void app_main(void)
+{
+    handleI2C.setup();
+    xTaskCreate([](void *parameters)
+                { handleI2C.updateI2C(parameters); },
+                "I2C Updater", 2048, NULL, 12, NULL);
+}
+
+#endif

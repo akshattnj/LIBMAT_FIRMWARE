@@ -1,7 +1,3 @@
-#define SDA_PIN 21
-#define SCL_PIN 22
-#define I2C_TAG "i2cscanner"
-
 extern "C"
 {
 #include <driver/i2c.h>
@@ -11,12 +7,14 @@ extern "C"
 #include <stdio.h>
 }
 
+#include "definations.h"
+
 extern "C" void task(void *ignore)
 {
     i2c_config_t conf;
     conf.mode = I2C_MODE_MASTER;
-    conf.sda_io_num = SDA_PIN;
-    conf.scl_io_num = SCL_PIN;
+    conf.sda_io_num = SDA_0_PIN;
+    conf.scl_io_num = SCL_0_PIN;
     conf.sda_pullup_en = GPIO_PULLUP_ENABLE;
     conf.scl_pullup_en = GPIO_PULLUP_ENABLE;
     conf.master.clk_speed = 100000;

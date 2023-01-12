@@ -9,26 +9,16 @@
 
 #define AHT_ADDRESS 0x38
 
-#define MPU_ADDRESS 0x68
-#define MPU6050_SMPLRT_DIV_REGISTER   0x19
-#define MPU6050_CONFIG_REGISTER       0x1a
-#define MPU6050_GYRO_CONFIG_REGISTER  0x1b
-#define MPU6050_ACCEL_CONFIG_REGISTER 0x1c
-#define MPU6050_PWR_MGMT_1_REGISTER   0x6b
+#define AHT_ENABLED 0b10000000
+#define AHT_BUSY    0b10000000
+#define AHT_CALIB   0b00001000
 
-#define MPU6050_GYRO_OUT_REGISTER     0x43
-#define MPU6050_ACCEL_OUT_REGISTER    0x3B
-
-#define RAD_2_DEG             57.29578 // [deg/rad]
-#define CALIB_OFFSET_NB_MES   500
-#define TEMP_LSB_2_DEGREE     340.0    // [bit/celsius]
-#define TEMP_LSB_OFFSET       12412.0
-
-#define DEFAULT_GYRO_COEFF    0.98
-
-#define BUF_SIZE 1024
+#define ADS_ADDRESS 0x48
+#define ADS_DATA_RATE 0x0080
 
 #define MAIN_TAG "MAIN"
 #define I2C_TAG "I2C"
+
+// #define SCANNER_MODE
 
 #endif

@@ -35,7 +35,7 @@ public:
         this->config.sda_pullup_en = GPIO_PULLUP_ENABLE;
         this->config.scl_pullup_en = GPIO_PULLUP_ENABLE;
         this->config.master.clk_speed = clock;
-        this->sensorStatus = 0;
+        this->ahtSensorStatus = 0;
         return;
     }
 
@@ -50,37 +50,6 @@ public:
         i2c_driver_install(this->portNum, I2C_MODE_MASTER, 0, 0, 0);
         ESP_LOGI(I2C_TAG, "I2C Initial Setup Complete");
         this->setupAHT(AHT_ADDRESS);
-        this->setupMPU(MPU_ADDRESS);
-    }
-
-    /**
-     * @brief Initial setup for AHT21B
-     *
-     * @param address
-     */
-    void setupAHT(uint8_t address)
-    {
-        if (!(this->readWriteI2C(address, this->AHTStatusCommand, 1, 1)))
-            return;
-
-        if (!(readBuffer[0] & 0b00001000))
-        {
-            ESP_LOGI(I2C_TAG, "AHT is uncalibrated with response: %d. Initialising...", readBuffer[0]);
-            if (!(this->writeI2C(address, this->AHTCalibrateCommand, 1)))
-                return;
-        }
-        this->sensorStatus = this->sensorStatus | 0b10000000;
-        ESP_LOGI(I2C_TAG, "AHT21B Setup Complete Status %d", this->sensorStatus);
-    }
-
-    /**
-     * @brief Initial setup for MPU6050
-     *
-     * @param address
-     */
-    void setupMPU(uint8_t address)
-    {
-        ESP_LOGI(I2C_TAG, "MPU6050 Setup Complete");
     }
 
 
@@ -93,13 +62,13 @@ public:
     {
         while (1)
         {
-            if (this->sensorStatus & 0b10000000)
+            if (this->ahtSensorStatus & AHT_ENABLED)
             {
                 this->writeI2C(AHT_ADDRESS, this->AHTMeasureCommand, 3);
                 vTaskDelay(80 / portTICK_RATE_MS);
             checkStatusAHT:
                 this->readWriteI2C(AHT_ADDRESS, this->AHTStatusCommand, 1, 1);
-                if (this->readBuffer[0] & 0b10000000)
+                if (this->readBuffer[0] & AHT_BUSY)
                 {
                     ESP_LOGI(I2C_TAG, "AHT sensor busy");
                     goto checkStatusAHT;
@@ -119,7 +88,7 @@ private:
     i2c_config_t config;
     const int sdaPin;
     const int sclPin;
-    uint8_t sensorStatus; // 7 - AHT ON, 6 - Free, 5 - Free, 4 - Free, 3- Free, 2 - Free, 1 - Free, 0 - Free
+    uint8_t ahtSensorStatus; // 7 - AHT ON, 6 - Free, 5 - Free, 4 - Free, 3- Free, 2 - Free, 1 - Free, 0 - Free
 
     // I2C Communication Variables
     uint8_t readBuffer[I2C_READ_BUFFER];
@@ -147,7 +116,7 @@ private:
         if (espError > 0)
         {
             ESP_LOGE(I2C_TAG, "I2C read-write error on AHT21B with code: %d", espError);
-            this->sensorStatus = this->sensorStatus & 0b01111111;
+            this->ahtSensorStatus = this->ahtSensorStatus & ~AHT_ENABLED;
             return false;
         }
         return true;
@@ -189,6 +158,36 @@ private:
             return false;
         }
         return true;
+    }
+
+    /**
+     * @brief Initial setup for AHT21B
+     *
+     * @param address
+     */
+    void setupAHT(uint8_t address)
+    {
+        if (!(this->readWriteI2C(address, this->AHTStatusCommand, 1, 1)))
+            return;
+
+        if (!(readBuffer[0] & AHT_CALIB))
+        {
+            ESP_LOGI(I2C_TAG, "AHT is uncalibrated with response: %d. Initialising...", readBuffer[0]);
+            if (!(this->writeI2C(address, this->AHTCalibrateCommand, 1)))
+                return;
+        }
+        this->ahtSensorStatus = this->ahtSensorStatus | AHT_ENABLED;
+        ESP_LOGI(I2C_TAG, "AHT21B Setup Complete Status %d", this->ahtSensorStatus);
+    }
+
+    /**
+     * @brief Initial setup for MPU6050
+     *
+     * @param address
+     */
+    void setupMPU(uint8_t address)
+    {
+        ESP_LOGI(I2C_TAG, "MPU6050 Setup Complete");
     }
 
     /**
