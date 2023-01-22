@@ -9,7 +9,6 @@ extern "C"
 #include <host/util/util.h>
 #include <console/console.h>
 #include <services/gap/ble_svc_gap.h>
-#include "src/bleprph.h"
 #include "src/nimble.h"
 }
 #include <string.h>

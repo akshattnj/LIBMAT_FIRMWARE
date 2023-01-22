@@ -15,7 +15,6 @@
 #include <services/gap/ble_svc_gap.h>
 #include <services/gatt/ble_svc_gatt.h>
 
-#include "bleprph.h"
 #include "nimble.h"
 #include "definations.h"
 
