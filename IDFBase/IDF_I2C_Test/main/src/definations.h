@@ -10,11 +10,25 @@
 #define AHT_ADDRESS 0x38
 
 #define AHT_ENABLED 0b10000000
-#define AHT_BUSY    0b10000000
-#define AHT_CALIB   0b00001000
+#define AHT_BUSY 0b10000000
+#define AHT_CALIB 0b00001000
 
-#define ADS_ADDRESS 0x48
-#define ADS_DATA_RATE 0x0080
+#define ADS1115_ADDRESS     0x48
+#define ADS1115_GAIN        0x0000      // (Gain 2/3)
+#define ADS1115_DATA_RATE   0x0080 // 128 Samples per second
+#define ADS1115_BIT_SHIFT   0x0000
+#define ADS1115_SINGLE_READ 0x0100
+#define ADS1115_START       0x8000
+#define ADS1115_DATA_REG    0x0000
+#define ADS1115_CONFIG_REG  0x0001
+#define ADS1115_LOW_THRESH  0x0002
+#define ADS1115_HIGH_THRESH 0x0003
+#define ADS1115_MUX_0       0x4000
+#define ADS1115_MUX_1       0x5000
+#define ADS1115_MUX_2       0x6000
+#define ADS1115_MUX_3       0x7000
+
+constexpr uint16_t MUX_SELECT[] = {ADS1115_MUX_0, ADS1115_MUX_1, ADS1115_MUX_2, ADS1115_MUX_3};
 
 #define MAIN_TAG "MAIN"
 #define I2C_TAG "I2C"

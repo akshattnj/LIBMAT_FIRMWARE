@@ -52,7 +52,6 @@ public:
         this->setupAHT(AHT_ADDRESS);
     }
 
-
     /**
      * @brief Update data from connected I2C device. To be used inside task.
      *
@@ -110,7 +109,7 @@ private:
      * @return true if communication successful
      * @return false if communication failed
      */
-    bool readWriteI2C(uint8_t address, const uint8_t* toWrite, size_t writeSize, size_t readSize)
+    bool readWriteI2C(uint8_t address, const uint8_t *toWrite, size_t writeSize, size_t readSize)
     {
         this->espError = i2c_master_write_read_device(I2C_NUM_0, address, toWrite, writeSize, readBuffer, readSize, 100 / portTICK_RATE_MS);
         if (espError > 0)
@@ -149,9 +148,9 @@ private:
      * @return true if communication is successful
      * @return false if communication failed
      */
-    bool writeI2C(uint8_t address, const uint8_t* toWrite, size_t writeSize)
+    bool writeI2C(uint8_t address, const uint8_t *toWrite, size_t writeSize)
     {
-        this->espError = i2c_master_write_to_device(this->portNum, address, (uint8_t*)toWrite, writeSize, 100 / portTICK_RATE_MS);
+        this->espError = i2c_master_write_to_device(this->portNum, address, (uint8_t *)toWrite, writeSize, 100 / portTICK_RATE_MS);
         if (this->espError > 0)
         {
             ESP_LOGE(I2C_TAG, "Communication failure with AHT with code:%d", this->espError);
@@ -202,6 +201,37 @@ private:
         this->humidity = humidityRaw * inv2Pow20 * 100;
         this->temperature = (temperatureRaw * inv2Pow20 * 200) - 50;
         ESP_LOGI(I2C_TAG, "Got temperature %f and humidity %f\nDebug: %X %X", this->temperature, this->humidity, humidityRaw, temperatureRaw);
+    }
+
+    int16_t readAdsData(uint8_t channel)
+    {
+        if (channel > 3)
+        {
+            ESP_LOGE(I2C_TAG, "Invalid channel name %d. Pls contact developer", channel);
+            return 0;
+        }
+        uint8_t writeBuffer[3];
+        uint16_t adsConfig = 0x0000;
+        adsConfig = adsConfig | ADS1115_SINGLE_READ | ADS1115_GAIN | ADS1115_DATA_RATE | MUX_SELECT[channel] | ADS1115_START;
+        writeBuffer[0] = (uint8_t)(adsConfig >> 8);
+        writeBuffer[1] = (uint8_t)(adsConfig & 0xFF);
+        this->writeI2C(ADS1115_DATA_REG, writeBuffer, 2);
+
+        writeBuffer[0] = 0x80;
+        writeBuffer[1] = 0x00;
+        this->writeI2C(ADS1115_HIGH_THRESH, writeBuffer, 2);
+
+        writeBuffer[0] = 0x00;
+        writeBuffer[1] = 0x00;
+        this->writeI2C(ADS1115_LOW_THRESH, writeBuffer, 2);
+
+        while (1)
+        {
+            this->readI2C(ADS1115_DATA_REG, 2);
+            if((readBuffer[0] & 0x80) != 0)
+                break;
+            vTaskDelay(1 / portTICK_RATE_MS);
+        }
     }
 };
 
