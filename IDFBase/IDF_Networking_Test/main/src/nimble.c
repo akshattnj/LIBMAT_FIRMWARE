@@ -62,6 +62,23 @@ static const struct ble_gatt_svc_def gatt_svr_svcs[] = {
     },
 };
 
+void print_bytes(const uint8_t *bytes, int len)
+{
+    int i;
+
+    for (i = 0; i < len; i++) {
+        MODLOG_DFLT(INFO, "%s0x%02x", i != 0 ? ":" : "", bytes[i]);
+    }
+}
+
+void print_addr(const void *addr)
+{
+    const uint8_t *u8p;
+
+    u8p = addr;
+    MODLOG_DFLT(INFO, "%02x:%02x:%02x:%02x:%02x:%02x", u8p[5], u8p[4], u8p[3], u8p[2], u8p[1], u8p[0]);
+}
+
 /**
  * @brief Callback function for when any BLE characteristic is accessed suck ar read or write
  * 
@@ -84,7 +101,7 @@ static int gatt_svr_chr_access(uint16_t conn_handle, uint16_t attr_handle, struc
     // BLE Write Event
     case BLE_GATT_ACCESS_OP_WRITE_CHR:
         rc = gatt_svr_chr_write(ctxt->om, min_length, max_length, &characteristic_received_value, NULL);
-        ESP_LOGI(BLE_TAG, "Received=%s\n", characteristic_received_value);
+        ESP_LOGI(BLE_TAG, "Received = %s\n", characteristic_received_value);
         char stp[] = "stop";
         int x = strcmp(characteristic_received_value, stp);
         if (x == 0)
@@ -215,21 +232,21 @@ void gatt_svr_register_cb(struct ble_gatt_register_ctxt *ctxt, void *arg)
     switch (ctxt->op)
     {
     case BLE_GATT_REGISTER_OP_SVC:
-        MODLOG_DFLT(DEBUG, "registered service %s with handle=%d\n",
+        MODLOG_DFLT(DEBUG, "registered service %s with handle = %d\n",
                     ble_uuid_to_str(ctxt->svc.svc_def->uuid, buf),
                     ctxt->svc.handle);
         break;
 
     case BLE_GATT_REGISTER_OP_CHR:
         MODLOG_DFLT(DEBUG, "registering characteristic %s with "
-                           "def_handle=%d val_handle=%d\n",
+                           "def_handle = %d val_handle = %d\n",
                     ble_uuid_to_str(ctxt->chr.chr_def->uuid, buf),
                     ctxt->chr.def_handle,
                     ctxt->chr.val_handle);
         break;
 
     case BLE_GATT_REGISTER_OP_DSC:
-        MODLOG_DFLT(DEBUG, "registering descriptor %s with handle=%d\n",
+        MODLOG_DFLT(DEBUG, "registering descriptor %s with handle = %d\n",
                     ble_uuid_to_str(ctxt->dsc.dsc_def->uuid, buf),
                     ctxt->dsc.handle);
         break;
@@ -265,20 +282,20 @@ int gatt_svr_init(void)
 static void
 bleprph_print_conn_desc(struct ble_gap_conn_desc *desc)
 {
-    MODLOG_DFLT(INFO, "handle=%d our_ota_addr_type=%d our_ota_addr=",
+    MODLOG_DFLT(INFO, "handle = %d our_ota_addr_type = %d our_ota_addr = ",
                 desc->conn_handle, desc->our_ota_addr.type);
     print_addr(desc->our_ota_addr.val);
-    MODLOG_DFLT(INFO, " our_id_addr_type=%d our_id_addr=",
+    MODLOG_DFLT(INFO, " our_id_addr_type = %d our_id_addr = ",
                 desc->our_id_addr.type);
     print_addr(desc->our_id_addr.val);
-    MODLOG_DFLT(INFO, " peer_ota_addr_type=%d peer_ota_addr=",
+    MODLOG_DFLT(INFO, " peer_ota_addr_type = %d peer_ota_addr = ",
                 desc->peer_ota_addr.type);
     print_addr(desc->peer_ota_addr.val);
-    MODLOG_DFLT(INFO, " peer_id_addr_type=%d peer_id_addr=",
+    MODLOG_DFLT(INFO, " peer_id_addr_type = %d peer_id_addr = ",
                 desc->peer_id_addr.type);
     print_addr(desc->peer_id_addr.val);
-    MODLOG_DFLT(INFO, " conn_itvl=%d conn_latency=%d supervision_timeout=%d "
-                      "encrypted=%d authenticated=%d bonded=%d\n",
+    MODLOG_DFLT(INFO, " conn_itvl = %d conn_latency = %d supervision_timeout = %d "
+                      "encrypted = %d authenticated = %d bonded = %d\n",
                 desc->conn_itvl, desc->conn_latency,
                 desc->supervision_timeout,
                 desc->sec_state.encrypted,
@@ -331,7 +348,7 @@ bleprph_advertise(void)
     rc = ble_gap_adv_set_fields(&fields);
     if (rc != 0)
     {
-        MODLOG_DFLT(ERROR, "error setting advertisement data; rc=%d\n", rc);
+        MODLOG_DFLT(ERROR, "error setting advertisement data; rc = %d\n", rc);
         return;
     }
 
@@ -343,7 +360,7 @@ bleprph_advertise(void)
                            &adv_params, bleprph_gap_event, NULL);
     if (rc != 0)
     {
-        MODLOG_DFLT(ERROR, "error enabling advertisement; rc=%d\n", rc);
+        MODLOG_DFLT(ERROR, "error enabling advertisement; rc = %d\n", rc);
         return;
     }
 }
@@ -373,7 +390,7 @@ bleprph_gap_event(struct ble_gap_event *event, void *arg)
     {
     case BLE_GAP_EVENT_CONNECT:
         /* A new connection was established or a connection attempt failed. */
-        MODLOG_DFLT(INFO, "connection %s; status=%d ",
+        MODLOG_DFLT(INFO, "connection %s; status = %d ",
                     event->connect.status == 0 ? "established" : "failed",
                     event->connect.status);
         if (event->connect.status == 0)
@@ -393,7 +410,7 @@ bleprph_gap_event(struct ble_gap_event *event, void *arg)
         return 0;
 
     case BLE_GAP_EVENT_DISCONNECT:
-        MODLOG_DFLT(INFO, "disconnect; reason=%d ", event->disconnect.reason);
+        MODLOG_DFLT(INFO, "disconnect; reason = %d ", event->disconnect.reason);
         bleprph_print_conn_desc(&event->disconnect.conn);
         MODLOG_DFLT(INFO, "\n");
 
@@ -403,7 +420,7 @@ bleprph_gap_event(struct ble_gap_event *event, void *arg)
 
     case BLE_GAP_EVENT_CONN_UPDATE:
         /* The central has updated the connection parameters. */
-        MODLOG_DFLT(INFO, "connection updated; status=%d ",
+        MODLOG_DFLT(INFO, "connection updated; status = %d ",
                     event->conn_update.status);
         rc = ble_gap_conn_find(event->conn_update.conn_handle, &desc);
         assert(rc == 0);
@@ -412,17 +429,17 @@ bleprph_gap_event(struct ble_gap_event *event, void *arg)
         return 0;
 
     case BLE_GAP_EVENT_ADV_COMPLETE:
-        MODLOG_DFLT(INFO, "advertise complete; reason=%d",
+        MODLOG_DFLT(INFO, "advertise complete; reason = %d",
                     event->adv_complete.reason);
         bleprph_advertise();
         return 0;
 
     case BLE_GAP_EVENT_SUBSCRIBE:
 
-        MODLOG_DFLT(INFO, "subscribe event; cur_notify=%d\n value handle; "
-                          "val_handle=%d\n"
-                          "conn_handle=%d attr_handle=%d "
-                          "reason=%d prevn=%d curn=%d previ=%d curi=%d\n",
+        MODLOG_DFLT(INFO, "subscribe event; cur_notify = %d\n value handle; "
+                          "val_handle = %d\n"
+                          "conn_handle = %d attr_handle = %d "
+                          "reason = %d prevn = %d curn = %d previ = %d curi = %d\n",
                     event->subscribe.conn_handle,
                     event->subscribe.attr_handle,
                     event->subscribe.reason,
@@ -434,15 +451,15 @@ bleprph_gap_event(struct ble_gap_event *event, void *arg)
 
         if (event->subscribe.attr_handle == notification_handle)
         {
-            ESP_LOGI(BLE_TAG, "\nSubscribed with notification_handle =%d\n", event->subscribe.attr_handle);
+            ESP_LOGI(BLE_TAG, "\nSubscribed with notification_handle = %d\n", event->subscribe.attr_handle);
             notify_state = event->subscribe.cur_notify; //!! As the client is now subscribed to notifications, the value is set to 1
-            ESP_LOGI(BLE_TAG, "notify_state=%d\n", notify_state);
+            ESP_LOGI(BLE_TAG, "notify_state = %d\n", notify_state);
         }
 
         return 0;
 
     case BLE_GAP_EVENT_MTU:
-        MODLOG_DFLT(INFO, "mtu update event; conn_handle=%d cid=%d mtu=%d\n",
+        MODLOG_DFLT(INFO, "mtu update event; conn_handle = %d cid = %d mtu = %d\n",
                     event->mtu.conn_handle,
                     event->mtu.channel_id,
                     event->mtu.value);
@@ -455,7 +472,7 @@ bleprph_gap_event(struct ble_gap_event *event, void *arg)
 static void
 bleprph_on_reset(int reason)
 {
-    MODLOG_DFLT(ERROR, "Resetting state; reason=%d\n", reason);
+    MODLOG_DFLT(ERROR, "Resetting state; reason = %d \n", reason);
 }
 
 static void
@@ -470,7 +487,7 @@ bleprph_on_sync(void)
     rc = ble_hs_id_infer_auto(0, &own_addr_type);
     if (rc != 0)
     {
-        MODLOG_DFLT(ERROR, "error determining address type; rc=%d\n", rc);
+        MODLOG_DFLT(ERROR, "error determining address type; rc = %d\n", rc);
         return;
     }
 
@@ -490,6 +507,5 @@ void bleprph_host_task(void *param)
     ESP_LOGI(BLE_TAG, "BLE Host Task Started");
     /* This function will return only when nimble_port_stop() is executed */
     nimble_port_run();
-
     nimble_port_freertos_deinit();
 }
