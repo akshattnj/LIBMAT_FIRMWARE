@@ -16,6 +16,7 @@
 #include <services/gatt/ble_svc_gatt.h>
 
 #include "nimble.h"
+#include "utils.h"
 #include "definations.h"
 
 esp_err_t ret;
@@ -60,23 +61,6 @@ static const struct ble_gatt_svc_def gatt_svr_svcs[] = {
         0,
     },
 };
-
-void print_bytes(const uint8_t *bytes, int len)
-{
-    int i;
-
-    for (i = 0; i < len; i++) {
-        MODLOG_DFLT(INFO, "%s0x%02x", i != 0 ? ":" : "", bytes[i]);
-    }
-}
-
-void print_addr(const void *addr)
-{
-    const uint8_t *u8p;
-
-    u8p = addr;
-    MODLOG_DFLT(INFO, "%02x:%02x:%02x:%02x:%02x:%02x", u8p[5], u8p[4], u8p[3], u8p[2], u8p[1], u8p[0]);
-}
 
 /**
  * @brief Callback function for when any BLE characteristic is accessed suck ar read or write
@@ -185,20 +169,6 @@ void stopBLE()
         {
             ESP_LOGE(BLE_TAG, "esp_nimble_hci_and_controller_deinit() failed with error: %d", ret);
         }
-    }
-}
-
-/**
- * @brief Initialise Non Volatile Storage. Used by BLE to store keys and calibration data
- * 
- */
-void startNVS()
-{
-    esp_err_t ret = nvs_flash_init();
-    if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND)
-    {
-        ESP_ERROR_CHECK(nvs_flash_erase());
-        ret = nvs_flash_init();
     }
 }
 

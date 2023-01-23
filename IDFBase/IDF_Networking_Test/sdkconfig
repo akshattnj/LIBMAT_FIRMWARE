@@ -133,6 +133,20 @@ CONFIG_PARTITION_TABLE_MD5=y
 # end of Partition Table
 
 #
+# WiFi Configuration
+#
+CONFIG_ESP_WIFI_SSID="TestSSID"
+CONFIG_ESP_WIFI_PASSWORD="TestPassword"
+CONFIG_ESP_MAXIMUM_RETRY=5
+# end of WiFi Configuration
+
+#
+# Bluetooth Configuration
+#
+CONFIG_BLE_DEVICE_NAME="COM_7_VZL_1"
+# end of Bluetooth Configuration
+
+#
 # Compiler options
 #
 CONFIG_COMPILER_OPTIMIZATION_DEFAULT=y

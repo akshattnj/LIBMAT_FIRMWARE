@@ -10,13 +10,17 @@ extern "C"
 #include <console/console.h>
 #include <services/gap/ble_svc_gap.h>
 #include "src/nimble.h"
+#include "src/WiFiAP.h"
 }
 #include <string.h>
+#include "src/utils.h"
+#include "src/definations.h"
 
 extern "C" void app_main(void)
 {
     startNVS();
     startBLE();
+    initWiFiAP();
     xTaskCreate([](void *args) {
         uint16_t x = 0;
         char buffer[50];

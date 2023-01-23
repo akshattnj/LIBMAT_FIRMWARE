@@ -50,7 +50,7 @@ void initialiseWiFiSoftAP()
             .channel = ESP_WIFI_CHANNEL,
             .password = ESP_WIFI_PASS,
             .max_connection = MAX_STA_CONN,
-            .authmode = WIFI_AUTH_WPA3_PSK},
+            .authmode = WIFI_AUTH_WPA_WPA2_PSK},
     };
     if (strlen(ESP_WIFI_PASS) == 0)
     {
