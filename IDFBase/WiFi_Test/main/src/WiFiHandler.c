@@ -32,7 +32,11 @@ void initialiseWiFiSoftAP()
 {
     ESP_ERROR_CHECK(esp_netif_init());
     ESP_ERROR_CHECK(esp_event_loop_create_default());
-    esp_netif_create_default_wifi_ap();
+    
+    esp_netif_t * p_netif = esp_netif_create_default_wifi_ap();
+    esp_netif_ip_info_t if_info;
+    ESP_ERROR_CHECK(esp_netif_get_ip_info(p_netif, &if_info));
+    ESP_LOGI(WIFI_TAG, "ESP32 IP:" IPSTR, IP2STR(&if_info.ip));
 
     wifi_init_config_t config = WIFI_INIT_CONFIG_DEFAULT();
     ESP_ERROR_CHECK(esp_wifi_init(&config));
@@ -60,6 +64,7 @@ void initialiseWiFiSoftAP()
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_AP));
     ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_AP, &wifiConfig));
     ESP_ERROR_CHECK(esp_wifi_start());
+
 
     ESP_LOGI(WIFI_TAG, "wifi_init_softap finished. SSID:%s password:%s channel:%d", ESP_WIFI_SSID, ESP_WIFI_PASS, ESP_WIFI_CHANNEL);
 }
