@@ -8,5 +8,6 @@
 
 #define WIFI_TAG "WiFi"
 #define MAIN_TAG "Main"
+#define SERV_TAG "Server"
 
 #endif
