@@ -1,12 +1,13 @@
 #include "WebSocket.h"
 
 static uint8_t wsClientListSize;
+static uint8_t clientStatus;
 
 /**
  * Sends a Web Socket message to a specified client
- * @param args Arguments needed by the function to send a websocket request. 
+ * @param args Arguments needed by the function to send a websocket request.
  * In this case, the struct asyncRespArgs that is defined in the .h file
-*/
+ */
 static void sendMessageToClient(void *args)
 {
     WSClient *clientArgs = (WSClient *)args;
@@ -17,7 +18,7 @@ static void sendMessageToClient(void *args)
     wsPacket.payload = buffer;
     wsPacket.len = len;
     wsPacket.type = HTTPD_WS_TYPE_TEXT;
-    httpd_ws_send_frame_async(clientArgs->handler, clientArgs->fileDescriptor, &wsPacket);
+    esp_err_t ret = httpd_ws_send_frame_async(clientArgs->handler, clientArgs->fileDescriptor, &wsPacket);
     free(buffer);
 }
 
@@ -26,7 +27,7 @@ static void sendMessageToClient(void *args)
  * @param clientNum The client number as per the variable wsClientList defined in the .h file
  * @param data Pointer to the data to be sent
  * @param messageLen Size of the data to be sent
-*/
+ */
 static esp_err_t addToWSQueue(uint8_t clientNum, char *data, size_t messageLen)
 {
     if (clientNum >= wsClientListSize)
@@ -54,6 +55,61 @@ void broadcastToAll(void *args)
         }
         vTaskDelay(1000 / portTICK_PERIOD_MS);
     }
+}
+
+/**
+ * Remove inactive devices and move the queue
+ * @param devicePos position of the device
+*/
+void removeDeviceFromQueue(uint8_t devicePos)
+{
+    httpd_sess_trigger_close(wsClientList[devicePos].handler, wsClientList[devicePos].fileDescriptor);
+    for(int i = devicePos + 1; i < MAX_SOCKETS; i++) {
+        wsClientList[i - 1] = wsClientList[i];
+    }
+    wsClientListSize--;
+}
+
+/**
+ * Task to determine which websockets have become non responsive and remove from queue accordingly
+ * @param args task arguments
+*/
+void scanForDisconnectedDevices(void *args)
+{
+    while (true)
+    {
+        clientStatus = 0x00;
+        for (int i = 0; i < wsClientListSize; i++)
+        {
+            addToWSQueue(i, "TEST", 4);
+        }
+        vTaskDelay(3000 / portTICK_PERIOD_MS);
+        uint16_t testVariable = 0x01;
+        for(int i = 0; i < wsClientListSize; i++)
+        {
+            if((testVariable & clientStatus) == 0)
+            {
+                ESP_LOGE(SERV_TAG, "Client at %d is non responsive. Removing", i);
+                removeDeviceFromQueue(i);
+            }
+            testVariable = testVariable << 1;
+        }
+    }
+}
+
+/**
+ * Finds where the WS device is in queue by File Descriptor
+ * @param fileDescriptor File Descriptor of websocket 
+*/
+int8_t scanForDevice(int fileDescriptor) {
+    for(int i = 0; i < wsClientListSize; i++)
+    {
+        if(wsClientList[i].fileDescriptor == fileDescriptor)
+        {
+            return i;
+        }
+    }
+    return -1;
 }
 
 /**
@@ -107,16 +163,25 @@ static esp_err_t requestHandler(httpd_req_t *req)
         wsPacket.payload = buffer;
         if (wsClientListSize < 12)
         {
+            // Make sure device is not already registered
+            if(scanForDevice(httpd_req_to_sockfd(req)) != -1) {
+                sprintf((char *)wsPacket.payload, "INVALID");
+                wsPacket.len = 7;
+                ret = httpd_ws_send_frame(req, &wsPacket);
+                goto finish;
+            }
             // Register new connection
             ESP_LOGI(SERV_TAG, "CONNECT ACCEPT");
             wsClientList[wsClientListSize].handler = req->handle;
             wsClientList[wsClientListSize].fileDescriptor = httpd_req_to_sockfd(req);
+            clientStatus = clientStatus | (0x01 << wsClientListSize);
             wsClientListSize++;
 
             // Sent acceptance response
             sprintf((char *)wsPacket.payload, "ACCEPT");
             wsPacket.len = 6;
             ret = httpd_ws_send_frame(req, &wsPacket);
+            goto finish;
         }
         else
         {
@@ -124,15 +189,29 @@ static esp_err_t requestHandler(httpd_req_t *req)
             sprintf((char *)wsPacket.payload, "FULL");
             wsPacket.len = 4;
             ret = httpd_ws_send_frame(req, &wsPacket);
+            goto finish;
         }
     }
-    else
+    if(strncmp("OK", (char *)wsPacket.payload, 2) == 0)
     {
-        sprintf((char *)wsPacket.payload, "INVALID");
-        wsPacket.len = 7;
-        ret = httpd_ws_send_frame(req, &wsPacket);
+        int8_t device = scanForDevice(httpd_req_to_sockfd(req));
+        if(device == -1)
+        {
+            ESP_LOGE(SERV_TAG, "Could not find device");
+            goto finish;
+        }
+        uint16_t flag = 0x01 << device;
+        ESP_LOGI(SERV_TAG, "Setting device tag %X", flag);
+        clientStatus = clientStatus | flag;
+        goto finish;
     }
 
+    sprintf((char *)wsPacket.payload, "INVALID");
+    wsPacket.len = 7;
+    ret = httpd_ws_send_frame(req, &wsPacket);
+
+
+finish:
     // Clean up
     free(buffer);
     return ret;
@@ -152,7 +231,9 @@ httpd_handle_t startWebserver(void)
 {
     httpd_handle_t server = NULL;
     httpd_config_t config = HTTPD_DEFAULT_CONFIG();
+    config.max_open_sockets = 7;
     wsClientListSize = 0;
+    clientStatus = 0;
 
     ESP_LOGI(SERV_TAG, "Starting server on port: '%d'", config.server_port);
     if (httpd_start(&server, &config) == ESP_OK)

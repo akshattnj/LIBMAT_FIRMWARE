@@ -6,6 +6,8 @@
 #define ESP_WIFI_CHANNEL   CONFIG_ESP_WIFI_CHANNEL
 #define MAX_STA_CONN       CONFIG_ESP_MAX_STA_CONN
 
+#define MAX_SOCKETS 7
+
 #define WIFI_TAG "WiFi"
 #define MAIN_TAG "Main"
 #define SERV_TAG "Server"

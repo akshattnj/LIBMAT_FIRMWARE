@@ -15,9 +15,11 @@ typedef struct asyncRespArgs {
     size_t messageLen;
 } WSClient;
 
-WSClient wsClientList[12];
+WSClient wsClientList[MAX_SOCKETS];
 
 void broadcastToAll(void *args);
+
+void scanForDisconnectedDevices(void *args);
 
 httpd_handle_t startWebserver(void);
 
