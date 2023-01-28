@@ -17,8 +17,7 @@ typedef struct asyncRespArgs {
 
 WSClient wsClientList[12];
 
-
-static esp_err_t addToWSQueue(uint8_t clientNum, char *data, size_t messageLen);
+void broadcastToAll(void *args);
 
 httpd_handle_t startWebserver(void);
 

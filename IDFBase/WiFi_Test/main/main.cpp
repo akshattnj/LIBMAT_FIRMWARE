@@ -12,4 +12,5 @@ extern "C" void app_main(void)
     initialiseNVS();
     initialiseWiFiSoftAP();
     startWebserver();
+    xTaskCreate(broadcastToAll, "Broadcast", 2048, NULL, 10, NULL);
 }

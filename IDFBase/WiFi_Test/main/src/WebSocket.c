@@ -2,14 +2,31 @@
 
 static uint8_t wsClientListSize;
 
-static void generateRequest(void *args)
+/**
+ * Sends a Web Socket message to a specified client
+ * @param args Arguments needed by the function to send a websocket request. 
+ * In this case, the struct asyncRespArgs that is defined in the .h file
+*/
+static void sendMessageToClient(void *args)
 {
     WSClient *clientArgs = (WSClient *)args;
-    char data[clientArgs->messageLen + 1];
-    sprintf(data, "%s", clientArgs->message);
-    httpd_socket_send(clientArgs->handler, clientArgs->fileDescriptor, data, clientArgs->messageLen, 0);
+    httpd_ws_frame_t wsPacket;
+    memset(&wsPacket, 0, sizeof(httpd_ws_frame_t));
+    uint8_t *buffer = calloc(1, clientArgs->messageLen + 5);
+    size_t len = sprintf((char *)buffer, "%s %d", (char *)clientArgs->message, clientArgs->fileDescriptor);
+    wsPacket.payload = buffer;
+    wsPacket.len = len;
+    wsPacket.type = HTTPD_WS_TYPE_TEXT;
+    httpd_ws_send_frame_async(clientArgs->handler, clientArgs->fileDescriptor, &wsPacket);
+    free(buffer);
 }
 
+/**
+ * Adds a message send request to the http Websocket request queue
+ * @param clientNum The client number as per the variable wsClientList defined in the .h file
+ * @param data Pointer to the data to be sent
+ * @param messageLen Size of the data to be sent
+*/
 static esp_err_t addToWSQueue(uint8_t clientNum, char *data, size_t messageLen)
 {
     if (clientNum >= wsClientListSize)
@@ -20,13 +37,28 @@ static esp_err_t addToWSQueue(uint8_t clientNum, char *data, size_t messageLen)
     wsClientList[clientNum].message = data;
     wsClientList[clientNum].messageLen = messageLen;
     ESP_LOGI(SERV_TAG, "Queuing job for fd: %d", wsClientList[clientNum].fileDescriptor);
-    httpd_queue_work(wsClientList[clientNum].handler, generateRequest, &wsClientList[clientNum]);
+    httpd_queue_work(wsClientList[clientNum].handler, sendMessageToClient, &wsClientList[clientNum]);
     return ESP_OK;
+}
+
+void broadcastToAll(void *args)
+{
+    while (true)
+    {
+        if (wsClientListSize > 0)
+        {
+            for (uint8_t i = 0; i < wsClientListSize; i++)
+            {
+                addToWSQueue(i, "Hello", 5);
+            }
+        }
+        vTaskDelay(1000 / portTICK_PERIOD_MS);
+    }
 }
 
 /**
  * Handler for incoming websocket requests
- *  @param req Pointer to incoming request
+ *  @param req Pointer to incoming request (httpd_req_t)
  */
 static esp_err_t requestHandler(httpd_req_t *req)
 {
