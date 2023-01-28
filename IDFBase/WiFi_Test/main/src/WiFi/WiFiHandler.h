@@ -13,6 +13,8 @@
 #include <lwip/err.h>
 #include <lwip/sys.h>
 
+#include "../definations.h"
+
 void initialiseNVS();
 void initialiseWiFiSoftAP();
 

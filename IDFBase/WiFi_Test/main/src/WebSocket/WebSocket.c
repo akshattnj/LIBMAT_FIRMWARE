@@ -18,7 +18,7 @@ static void sendMessageToClient(void *args)
     wsPacket.payload = buffer;
     wsPacket.len = len;
     wsPacket.type = HTTPD_WS_TYPE_TEXT;
-    esp_err_t ret = httpd_ws_send_frame_async(clientArgs->handler, clientArgs->fileDescriptor, &wsPacket);
+    httpd_ws_send_frame_async(clientArgs->handler, clientArgs->fileDescriptor, &wsPacket);
     free(buffer);
 }
 

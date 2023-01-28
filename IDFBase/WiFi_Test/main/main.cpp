@@ -3,8 +3,8 @@
 extern "C" {
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
-#include "src/WiFiHandler.h"
-#include "src/WebSocket.h"
+#include "src/WebSocket/WebSocket.h"
+#include "src/WiFi/WiFiHandler.h"
 }
 
 extern "C" void app_main(void)
