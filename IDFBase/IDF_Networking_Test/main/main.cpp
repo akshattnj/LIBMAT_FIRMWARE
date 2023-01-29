@@ -1,19 +1,10 @@
 extern "C"
 {
-#include <esp_log.h>
-#include <nvs_flash.h>
-#include <esp_nimble_hci.h>
-#include <nimble/nimble_port.h>
-#include <nimble/nimble_port_freertos.h>
-#include <host/ble_hs.h>
-#include <host/util/util.h>
-#include <console/console.h>
-#include <services/gap/ble_svc_gap.h>
-#include "src/nimble.h"
-#include "src/WiFiAP.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include "src/NimBLE/nimble.h"
+#include "src/WiFiClient/WiFiAP.h"
 }
-#include <string.h>
-#include "src/utils.h"
 #include "src/definations.h"
 
 extern "C" void app_main(void)

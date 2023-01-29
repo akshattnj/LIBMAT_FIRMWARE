@@ -15,8 +15,8 @@
 #include <lwip/err.h>
 #include <lwip/sys.h>
 
-void initNVS();
-void initWiFiAP();
 void startNVS();
+void initWiFiAP();
+bool isWiFiConnected();
 
 #endif
