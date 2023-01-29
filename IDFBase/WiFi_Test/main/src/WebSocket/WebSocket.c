@@ -22,6 +22,16 @@ static void sendMessageToClient(void *args)
     free(buffer);
 }
 
+static void sendDisconnect(void *args) {
+    WSClient *clientArgs = (WSClient *)args;
+    httpd_ws_frame_t wsPacket;
+    memset(&wsPacket, 0, sizeof(httpd_ws_frame_t));
+    wsPacket.payload = NULL;
+    wsPacket.len = 0;
+    wsPacket.type = HTTPD_WS_TYPE_CLOSE;
+    httpd_ws_send_frame_async(clientArgs->handler, clientArgs->fileDescriptor, &wsPacket);
+}
+
 /**
  * Adds a message send request to the http Websocket request queue
  * @param clientNum The client number as per the variable wsClientList defined in the .h file
@@ -63,6 +73,8 @@ void broadcastToAll(void *args)
 */
 void removeDeviceFromQueue(uint8_t devicePos)
 {
+    httpd_queue_work(wsClientList[devicePos].handler, sendDisconnect, &wsClientList[devicePos]);
+    vTaskDelay(100 / portTICK_PERIOD_MS);
     httpd_sess_trigger_close(wsClientList[devicePos].handler, wsClientList[devicePos].fileDescriptor);
     for(int i = devicePos + 1; i < MAX_SOCKETS; i++) {
         wsClientList[i - 1] = wsClientList[i];
@@ -192,6 +204,7 @@ static esp_err_t requestHandler(httpd_req_t *req)
             goto finish;
         }
     }
+    // Track all connections that responded with OK and mark as alive
     if(strncmp("OK", (char *)wsPacket.payload, 2) == 0)
     {
         int8_t device = scanForDevice(httpd_req_to_sockfd(req));
@@ -200,7 +213,7 @@ static esp_err_t requestHandler(httpd_req_t *req)
             ESP_LOGE(SERV_TAG, "Could not find device");
             goto finish;
         }
-        uint16_t flag = 0x01 << device;
+        uint8_t flag = 0x01 << device;
         ESP_LOGI(SERV_TAG, "Setting device tag %X", flag);
         clientStatus = clientStatus | flag;
         goto finish;
@@ -231,7 +244,7 @@ httpd_handle_t startWebserver(void)
 {
     httpd_handle_t server = NULL;
     httpd_config_t config = HTTPD_DEFAULT_CONFIG();
-    config.max_open_sockets = 7;
+    config.max_open_sockets = MAX_SOCKETS;
     wsClientListSize = 0;
     clientStatus = 0;
 
