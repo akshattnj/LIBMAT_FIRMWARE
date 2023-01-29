@@ -19,6 +19,13 @@ void startNVS()
     ESP_ERROR_CHECK(ret);
 }
 
+/**
+ * Event handler for WiFi events
+ * @param arg Additional event arguments
+ * @param event_base Base event type (WIFI, IP, HTTP, etc)
+ * @param event_id Id of the event
+ * @param event_data Event specific params. Eg. - IP address for IP event
+*/
 static void WiFiEventHandler(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data)
 {
     if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_START)
@@ -56,6 +63,9 @@ static void WiFiEventHandler(void *arg, esp_event_base_t event_base, int32_t eve
     }
 }
 
+/**
+ * Function to connect to WiFi
+*/
 void connectWiFi() {
     WiFiFlags = WiFiFlags | BIT0;
     esp_wifi_connect();
@@ -63,7 +73,7 @@ void connectWiFi() {
 
 
 /**
- * Initialise WiFi
+ * First time WiFi initialisation
 */
 void initWiFiAP()
 {
@@ -93,8 +103,4 @@ void initWiFiAP()
     ESP_ERROR_CHECK(esp_wifi_start());
 
     ESP_LOGI(WIFI_TAG, "WiFi initialised");
-}
-
-bool isWiFiConnected() {
-    return ((WiFiFlags & BIT1) > 0);
 }

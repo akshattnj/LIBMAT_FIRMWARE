@@ -1,7 +1,7 @@
 #include "WSClient.h"
 
 esp_websocket_client_handle_t client;
-uint8_t wsFlags = 0x00;
+uint8_t wsFlags = 0x00; // {BIT0 - Connect websocket, BIT1 - Disconnect websocket}
 
 /**
  * Function to instantiate and start a Websocket client
@@ -96,6 +96,9 @@ void sendWSMessage(char *data, size_t dataLen) {
     }
 }
 
+/**
+ * Task to handle websocket connection status
+*/
 void wsClientTask(void *args)
 {
     while(1)

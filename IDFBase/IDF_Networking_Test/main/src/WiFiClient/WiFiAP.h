@@ -15,9 +15,10 @@
 #include <lwip/err.h>
 #include <lwip/sys.h>
 
+extern uint8_t WiFiFlags;
+
 void startNVS();
 void initWiFiAP();
-bool isWiFiConnected();
 void connectWiFi();
 
 #endif
