@@ -1,8 +1,22 @@
 #include "WiFiAP.h"
-#include "definations.h"
 
 static EventGroupHandle_t s_wifi_event_group;
 static int s_retry_num = 0;
+
+/**
+ * @brief Initialise Non Volatile Storage. Used by BLE and WiFi client to store keys and calibration data
+ * 
+ */
+void startNVS()
+{
+    esp_err_t ret = nvs_flash_init();
+    if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND)
+    {
+        ESP_ERROR_CHECK(nvs_flash_erase());
+        ret = nvs_flash_init();
+    }
+    ESP_ERROR_CHECK(ret);
+}
 
 static void event_handler(void *arg, esp_event_base_t event_base,
                           int32_t event_id, void *event_data)

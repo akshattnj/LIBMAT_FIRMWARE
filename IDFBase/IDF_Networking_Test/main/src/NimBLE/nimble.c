@@ -1,23 +1,4 @@
-
-
-#include <assert.h>
-#include <stdio.h>
-#include <string.h>
-#include <esp_log.h>
-#include <nvs_flash.h>
-#include <esp_nimble_hci.h>
-#include <nimble/nimble_port.h>
-#include <nimble/nimble_port_freertos.h>
-#include <host/ble_hs.h>
-#include <host/util/util.h>
-#include <host/ble_uuid.h>
-#include <console/console.h>
-#include <services/gap/ble_svc_gap.h>
-#include <services/gatt/ble_svc_gatt.h>
-
 #include "nimble.h"
-#include "utils.h"
-#include "definations.h"
 
 esp_err_t ret;
 static uint8_t own_addr_type;
@@ -40,6 +21,8 @@ static int gatt_svr_chr_write(struct os_mbuf *om, uint16_t min_len, uint16_t max
 static void bleprph_on_reset(int reason);
 void bleprph_host_task(void *param);
 static void bleprph_on_sync(void);
+void print_addr(const void *addr);
+void print_bytes(const uint8_t *bytes, int len);
 
 static const struct ble_gatt_svc_def gatt_svr_svcs[] = {
     {
@@ -173,6 +156,23 @@ void stopBLE()
 }
 
 //Modify the below code at own risk. I have no clue what is going on but it makes BLE work, so I won't question it
+
+void print_bytes(const uint8_t *bytes, int len)
+{
+    int i;
+
+    for (i = 0; i < len; i++) {
+        MODLOG_DFLT(INFO, "%s0x%02x", i != 0 ? ":" : "", bytes[i]);
+    }
+}
+
+void print_addr(const void *addr)
+{
+    const uint8_t *u8p;
+
+    u8p = (const uint8_t*)addr;
+    MODLOG_DFLT(INFO, "%02x:%02x:%02x:%02x:%02x:%02x", u8p[5], u8p[4], u8p[3], u8p[2], u8p[1], u8p[0]);
+}
 
 static int gatt_svr_chr_write(struct os_mbuf *om, uint16_t min_len, uint16_t max_len, void *dst, uint16_t *len)
 {

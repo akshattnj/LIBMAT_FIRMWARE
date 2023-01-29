@@ -14,7 +14,7 @@ static void sendMessageToClient(void *args)
     httpd_ws_frame_t wsPacket;
     memset(&wsPacket, 0, sizeof(httpd_ws_frame_t));
     uint8_t *buffer = calloc(1, clientArgs->messageLen + 5);
-    size_t len = sprintf((char *)buffer, "%s %d", (char *)clientArgs->message, clientArgs->fileDescriptor);
+    size_t len = sprintf((char *)buffer, "%s", (char *)clientArgs->message);
     wsPacket.payload = buffer;
     wsPacket.len = len;
     wsPacket.type = HTTPD_WS_TYPE_TEXT;

@@ -4,6 +4,7 @@
 #define BLE_TAG "NimBLE"
 #define MAIN_TAG "Main"
 #define WIFI_TAG "WiFi Client"
+#define UTIL_TAG "Utility"
 
 #define BLE_DEVICE_NAME "ESP_COM_16"
 

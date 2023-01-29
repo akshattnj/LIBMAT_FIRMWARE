@@ -1,4 +1,7 @@
-#include "definations.h"
+#ifndef WIFI_AP_H
+#define WIFI_AP_H
+
+#include "../definations.h"
 
 #include <string.h>
 #include <freertos/FreeRTOS.h>
@@ -14,3 +17,6 @@
 
 void initNVS();
 void initWiFiAP();
+void startNVS();
+
+#endif
