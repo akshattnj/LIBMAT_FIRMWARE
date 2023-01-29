@@ -4,6 +4,7 @@
 #define BLE_TAG "NimBLE"
 #define MAIN_TAG "Main"
 #define WIFI_TAG "WiFi Client"
+#define WS_TAG "Websocket Client"
 
 #define BLE_DEVICE_NAME "ESP_COM_16"
 

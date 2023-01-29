@@ -4,6 +4,7 @@ extern "C"
 #include "freertos/task.h"
 #include "src/NimBLE/nimble.h"
 #include "src/WiFiClient/WiFiAP.h"
+#include "src/WSClient/WSClient.h"
 }
 #include "src/definations.h"
 
@@ -12,6 +13,7 @@ extern "C" void app_main(void)
     startNVS();
     startBLE();
     initWiFiAP();
+    
     xTaskCreate([](void *args) {
         uint16_t x = 0;
         char buffer[50];
@@ -24,4 +26,10 @@ extern "C" void app_main(void)
             vTaskDelay(1000 / portTICK_RATE_MS);
         } 
     }, "Task", 2048, NULL, 10, NULL);
+
+    while(!isWiFiConnected())
+        vTaskDelay(1000 / portTICK_PERIOD_MS);
+
+    // Important - launch only after WiFi is connected
+    startWSClient();
 }
