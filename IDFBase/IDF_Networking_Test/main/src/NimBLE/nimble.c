@@ -21,8 +21,6 @@ static int gatt_svr_chr_write(struct os_mbuf *om, uint16_t min_len, uint16_t max
 static void bleprph_on_reset(int reason);
 void bleprph_host_task(void *param);
 static void bleprph_on_sync(void);
-void print_addr(const void *addr);
-void print_bytes(const uint8_t *bytes, int len);
 
 static const struct ble_gatt_svc_def gatt_svr_svcs[] = {
     {
@@ -119,7 +117,6 @@ void startBLE()
     nimble_port_init();
     ble_hs_cfg.reset_cb = bleprph_on_reset;
     ble_hs_cfg.sync_cb = bleprph_on_sync;
-    ble_hs_cfg.gatts_register_cb = gatt_svr_register_cb;
     ble_hs_cfg.store_status_cb = ble_store_util_status_rr;
     ble_hs_cfg.sm_io_cap = 3;
     ble_hs_cfg.sm_bonding = 1;
@@ -157,32 +154,6 @@ void stopBLE()
 // Do not modify below code unless absolutely necessary
 
 /**
- * Helper function to print an array of bytes
- * @param bytes array bytes to print
- * @param len length of array
-*/
-void print_bytes(const uint8_t *bytes, int len)
-{
-    int i;
-    for (i = 0; i < len; i++)
-    {
-        MODLOG_DFLT(INFO, "%s0x%02x", i != 0 ? ":" : "", bytes[i]);
-    }
-}
-
-/**
- * Helper function to print mac address
- * @param addr pointer containing mac address
-*/
-void print_addr(const void *addr)
-{
-    const uint8_t *u8p;
-
-    u8p = (const uint8_t *)addr;
-    MODLOG_DFLT(INFO, "%02x:%02x:%02x:%02x:%02x:%02x", u8p[5], u8p[4], u8p[3], u8p[2], u8p[1], u8p[0]);
-}
-
-/**
  * Function to read data incoming to BLE through the write characteristic
  * @param om Chained memory buffer containing the BLE data
  * @param min_len Minimum data length
@@ -211,43 +182,6 @@ static int gatt_svr_chr_write(struct os_mbuf *om, uint16_t min_len, uint16_t max
 }
 
 /**
- * Callback function that executes whenever any BLE characteristic or serivce is registered. Used for logging. 
- * @param ctxt BLE Context
- * @param arg Additional Arguments
-*/
-void gatt_svr_register_cb(struct ble_gatt_register_ctxt *ctxt, void *arg)
-{
-    char buf[BLE_UUID_STR_LEN];
-
-    switch (ctxt->op)
-    {
-    case BLE_GATT_REGISTER_OP_SVC:
-        MODLOG_DFLT(DEBUG, "registered service %s with handle = %d\n",
-                    ble_uuid_to_str(ctxt->svc.svc_def->uuid, buf),
-                    ctxt->svc.handle);
-        break;
-
-    case BLE_GATT_REGISTER_OP_CHR:
-        MODLOG_DFLT(DEBUG, "registering characteristic %s with "
-                           "def_handle = %d val_handle = %d\n",
-                    ble_uuid_to_str(ctxt->chr.chr_def->uuid, buf),
-                    ctxt->chr.def_handle,
-                    ctxt->chr.val_handle);
-        break;
-
-    case BLE_GATT_REGISTER_OP_DSC:
-        MODLOG_DFLT(DEBUG, "registering descriptor %s with handle = %d\n",
-                    ble_uuid_to_str(ctxt->dsc.dsc_def->uuid, buf),
-                    ctxt->dsc.handle);
-        break;
-
-    default:
-        assert(0);
-        break;
-    }
-}
-
-/**
  * Initialise BLE GATT service
  * @return error code
 */
@@ -271,33 +205,6 @@ int gatt_svr_init(void)
     }
 
     return 0;
-}
-
-/**
- * Helper function to print BLE information
- * @param desc BLE connection descriptor
-*/
-static void bleprph_print_conn_desc(struct ble_gap_conn_desc *desc)
-{
-    MODLOG_DFLT(INFO, "handle = %d our_ota_addr_type = %d our_ota_addr = ",
-                desc->conn_handle, desc->our_ota_addr.type);
-    print_addr(desc->our_ota_addr.val);
-    MODLOG_DFLT(INFO, " our_id_addr_type = %d our_id_addr = ",
-                desc->our_id_addr.type);
-    print_addr(desc->our_id_addr.val);
-    MODLOG_DFLT(INFO, " peer_ota_addr_type = %d peer_ota_addr = ",
-                desc->peer_ota_addr.type);
-    print_addr(desc->peer_ota_addr.val);
-    MODLOG_DFLT(INFO, " peer_id_addr_type = %d peer_id_addr = ",
-                desc->peer_id_addr.type);
-    print_addr(desc->peer_id_addr.val);
-    MODLOG_DFLT(INFO, " conn_itvl = %d conn_latency = %d supervision_timeout = %d "
-                      "encrypted = %d authenticated = %d bonded = %d\n",
-                desc->conn_itvl, desc->conn_latency,
-                desc->supervision_timeout,
-                desc->sec_state.encrypted,
-                desc->sec_state.authenticated,
-                desc->sec_state.bonded);
 }
 
 /**
@@ -395,7 +302,6 @@ static int bleprph_gap_event(struct ble_gap_event *event, void *arg)
         {
             rc = ble_gap_conn_find(event->connect.conn_handle, &desc);
             assert(rc == 0);
-            bleprph_print_conn_desc(&desc);
         }
         MODLOG_DFLT(INFO, "\n");
 
@@ -409,7 +315,6 @@ static int bleprph_gap_event(struct ble_gap_event *event, void *arg)
 
     case BLE_GAP_EVENT_DISCONNECT:
         MODLOG_DFLT(INFO, "disconnect; reason = %d ", event->disconnect.reason);
-        bleprph_print_conn_desc(&event->disconnect.conn);
         MODLOG_DFLT(INFO, "\n");
 
         /* Connection terminated; resume advertising. */
@@ -422,7 +327,6 @@ static int bleprph_gap_event(struct ble_gap_event *event, void *arg)
                     event->conn_update.status);
         rc = ble_gap_conn_find(event->conn_update.conn_handle, &desc);
         assert(rc == 0);
-        bleprph_print_conn_desc(&desc);
         MODLOG_DFLT(INFO, "\n");
         return 0;
 
@@ -492,7 +396,7 @@ static void bleprph_on_sync(void)
     rc = ble_hs_id_copy_addr(own_addr_type, addr_val, NULL);
 
     MODLOG_DFLT(INFO, "Device Address: ");
-    print_addr(addr_val);
+    MODLOG_DFLT(INFO, "%02x:%02x:%02x:%02x:%02x:%02x", addr_val[5], addr_val[4], addr_val[3], addr_val[2], addr_val[1], addr_val[0]);
     MODLOG_DFLT(INFO, "\n");
     /* Begin advertising. */
     bleprph_advertise();
