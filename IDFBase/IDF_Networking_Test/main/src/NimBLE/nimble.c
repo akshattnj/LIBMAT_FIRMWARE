@@ -37,8 +37,7 @@ static const struct ble_gatt_svc_def gatt_svr_svcs[] = {
             },
             {
                 0,
-            }
-        },
+            }},
     },
     {
         0,
@@ -47,19 +46,19 @@ static const struct ble_gatt_svc_def gatt_svr_svcs[] = {
 
 /**
  * @brief Callback function for when any BLE characteristic is accessed suck ar read or write
- * 
+ *
  * @param conn_handle
- * @param attr_handle 
+ * @param attr_handle
  * @param ctxt Access Context
  * @param arg
- * @return error code 
+ * @return error code
  */
 static int gatt_svr_chr_access(uint16_t conn_handle, uint16_t attr_handle, struct ble_gatt_access_ctxt *ctxt, void *arg)
 {
     int rc;
     switch (ctxt->op)
     {
-    //BLE Read Event
+    // BLE Read Event
     case BLE_GATT_ACCESS_OP_READ_CHR:
         rc = os_mbuf_append(ctxt->om, &characteristic_value, strlen(characteristic_value));
         return rc == 0 ? 0 : BLE_ATT_ERR_INSUFFICIENT_RES;
@@ -83,7 +82,7 @@ static int gatt_svr_chr_access(uint16_t conn_handle, uint16_t attr_handle, struc
 
 /**
  * @brief Send BLE Notification
- * 
+ *
  * @param notification Data to be sent
  * @param notificationLen Size of data
  */
@@ -109,7 +108,7 @@ void sendNotification(char *notification, size_t notificationLen)
 
 /**
  * @brief BLE initial setup
- * 
+ *
  */
 void startBLE()
 {
@@ -138,7 +137,7 @@ void startBLE()
 
 /**
  * @brief Stop BLE service
- * 
+ *
  */
 void stopBLE()
 {
@@ -155,25 +154,42 @@ void stopBLE()
     }
 }
 
-//Modify the below code at own risk. I have no clue what is going on but it makes BLE work, so I won't question it
+// Do not modify below code unless absolutely necessary
 
+/**
+ * Helper function to print an array of bytes
+ * @param bytes array bytes to print
+ * @param len length of array
+*/
 void print_bytes(const uint8_t *bytes, int len)
 {
     int i;
-
-    for (i = 0; i < len; i++) {
+    for (i = 0; i < len; i++)
+    {
         MODLOG_DFLT(INFO, "%s0x%02x", i != 0 ? ":" : "", bytes[i]);
     }
 }
 
+/**
+ * Helper function to print mac address
+ * @param addr pointer containing mac address
+*/
 void print_addr(const void *addr)
 {
     const uint8_t *u8p;
 
-    u8p = (const uint8_t*)addr;
+    u8p = (const uint8_t *)addr;
     MODLOG_DFLT(INFO, "%02x:%02x:%02x:%02x:%02x:%02x", u8p[5], u8p[4], u8p[3], u8p[2], u8p[1], u8p[0]);
 }
 
+/**
+ * Function to read data incoming to BLE through the write characteristic
+ * @param om Chained memory buffer containing the BLE data
+ * @param min_len Minimum data length
+ * @param max_len Maximum data length
+ * @param dst Pointer to store extracted data
+ * @param len Pointer to store extracted data length
+*/
 static int gatt_svr_chr_write(struct os_mbuf *om, uint16_t min_len, uint16_t max_len, void *dst, uint16_t *len)
 {
     uint16_t om_len;
@@ -194,6 +210,11 @@ static int gatt_svr_chr_write(struct os_mbuf *om, uint16_t min_len, uint16_t max
     return 0;
 }
 
+/**
+ * Callback function that executes whenever any BLE characteristic or serivce is registered. Used for logging. 
+ * @param ctxt BLE Context
+ * @param arg Additional Arguments
+*/
 void gatt_svr_register_cb(struct ble_gatt_register_ctxt *ctxt, void *arg)
 {
     char buf[BLE_UUID_STR_LEN];
@@ -226,6 +247,10 @@ void gatt_svr_register_cb(struct ble_gatt_register_ctxt *ctxt, void *arg)
     }
 }
 
+/**
+ * Initialise BLE GATT service
+ * @return error code
+*/
 int gatt_svr_init(void)
 {
     int rc;
@@ -248,8 +273,11 @@ int gatt_svr_init(void)
     return 0;
 }
 
-static void
-bleprph_print_conn_desc(struct ble_gap_conn_desc *desc)
+/**
+ * Helper function to print BLE information
+ * @param desc BLE connection descriptor
+*/
+static void bleprph_print_conn_desc(struct ble_gap_conn_desc *desc)
 {
     MODLOG_DFLT(INFO, "handle = %d our_ota_addr_type = %d our_ota_addr = ",
                 desc->conn_handle, desc->our_ota_addr.type);
@@ -272,8 +300,10 @@ bleprph_print_conn_desc(struct ble_gap_conn_desc *desc)
                 desc->sec_state.bonded);
 }
 
-static void
-bleprph_advertise(void)
+/**
+ * Function to start BLE advertising
+*/
+static void bleprph_advertise(void)
 {
     struct ble_gap_adv_params adv_params;
     struct ble_hs_adv_fields fields;
@@ -349,8 +379,7 @@ bleprph_advertise(void)
  *                                  of the return code is specific to the
  *                                  particular GAP event being signalled.
  */
-static int
-bleprph_gap_event(struct ble_gap_event *event, void *arg)
+static int bleprph_gap_event(struct ble_gap_event *event, void *arg)
 {
     struct ble_gap_conn_desc desc;
     int rc;
@@ -438,14 +467,12 @@ bleprph_gap_event(struct ble_gap_event *event, void *arg)
     return 0;
 }
 
-static void
-bleprph_on_reset(int reason)
+static void bleprph_on_reset(int reason)
 {
     MODLOG_DFLT(ERROR, "Resetting state; reason = %d \n", reason);
 }
 
-static void
-bleprph_on_sync(void)
+static void bleprph_on_sync(void)
 {
     int rc;
 

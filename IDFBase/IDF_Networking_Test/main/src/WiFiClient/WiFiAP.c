@@ -1,6 +1,7 @@
 #include "WiFiAP.h"
 
 uint8_t WiFiFlags = 0; // {0 - WiFi connecting, 1 - WiFi Connected}
+uint8_t retryCount = 0;
 
 /**
  * @brief Initialise Non Volatile Storage. Used by BLE and WiFi client to store keys and calibration data
@@ -32,6 +33,12 @@ static void WiFiEventHandler(void *arg, esp_event_base_t event_base, int32_t eve
             ESP_LOGI(WIFI_TAG, "WiFi connection failed");
             ESP_LOGI(WIFI_TAG, "WiFi connect failed. Retrying...");
             esp_wifi_connect();
+            if(retryCount > ESP_MAXIMUM_RETRY)
+            {
+                WiFiFlags = WiFiFlags & (~BIT0);
+                ESP_LOGE(WIFI_TAG, "Retry count exceeded");
+            }
+            retryCount++;
         }
         else
         {
@@ -43,9 +50,19 @@ static void WiFiEventHandler(void *arg, esp_event_base_t event_base, int32_t eve
         ip_event_got_ip_t *event = (ip_event_got_ip_t *)event_data;
         ESP_LOGI(WIFI_TAG, "Got IP:" IPSTR, IP2STR(&event->ip_info.ip));
         WiFiFlags = (WiFiFlags | BIT1) & (~BIT0);
+        retryCount = 0;
     }
 }
 
+void connectWiFi() {
+    WiFiFlags = WiFiFlags | BIT0;
+    esp_wifi_connect();
+}
+
+
+/**
+ * Initialise WiFi
+*/
 void initWiFiAP()
 {
     // Initialise WiFi settings
@@ -76,6 +93,6 @@ void initWiFiAP()
     ESP_LOGI(WIFI_TAG, "WiFi initialised");
 }
 
-bool isWiFiConnecter() {
+bool isWiFiConnected() {
     return ((WiFiFlags & BIT1) > 0);
 }

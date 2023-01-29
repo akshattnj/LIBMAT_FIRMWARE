@@ -18,5 +18,6 @@
 void startNVS();
 void initWiFiAP();
 bool isWiFiConnected();
+void connectWiFi();
 
 #endif
