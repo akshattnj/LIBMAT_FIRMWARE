@@ -1,7 +1,11 @@
 #include "WSClient.h"
 
 esp_websocket_client_handle_t client;
+uint8_t wsFlags = 0x00;
 
+/**
+ * Function to instantiate and start a Websocket client
+*/
 void startWSClient(void)
 {
     esp_websocket_client_config_t websocket_cfg = {};
@@ -24,6 +28,9 @@ void startWSClient(void)
     }
 }
 
+/**
+ * Websocket event handler
+*/
 void wsEventHandler(void *handler_args, esp_event_base_t base, int32_t event_id, void *event_data)
 {
     esp_websocket_event_data_t *data = (esp_websocket_event_data_t *)event_data;
@@ -34,6 +41,7 @@ void wsEventHandler(void *handler_args, esp_event_base_t base, int32_t event_id,
         break;
     case WEBSOCKET_EVENT_DISCONNECTED:
         ESP_LOGI(WS_TAG, "WEBSOCKET_EVENT_DISCONNECTED");
+        wsFlags = wsFlags | BIT1;
         break;
     case WEBSOCKET_EVENT_DATA:
         ESP_LOGI(WS_TAG, "WEBSOCKET_EVENT_DATA");
@@ -57,13 +65,22 @@ void wsEventHandler(void *handler_args, esp_event_base_t base, int32_t event_id,
     }
 }
 
+/**
+ * Disconnect the websocket client
+*/
 void destroyWSClient(void)
 {
-    esp_websocket_client_close(client, portMAX_DELAY);
+    if(esp_websocket_client_is_connected(client))
+        esp_websocket_client_close(client, portMAX_DELAY);
     ESP_LOGI(WS_TAG, "Websocket Stopped");
     esp_websocket_client_destroy(client);
 }
 
+/**
+ * Send a message to Websocket server
+ * @param data Data to be sent
+ * @param dataLen Length of data to be sent
+*/
 void sendWSMessage(char *data, size_t dataLen) {
     while (1)
     {
@@ -74,6 +91,25 @@ void sendWSMessage(char *data, size_t dataLen) {
             ESP_LOGI(WS_TAG, "Sending %s", toTransmit);
             esp_websocket_client_send_text(client, toTransmit, dataLen, portMAX_DELAY);
             break;
+        }
+        vTaskDelay(100 / portTICK_PERIOD_MS);
+    }
+}
+
+void wsClientTask(void *args)
+{
+    while(1)
+    {
+        if((wsFlags & BIT0) > 0)
+        {
+            wsFlags = wsFlags & (~BIT0);
+
+            startWSClient();
+        }
+        if((wsFlags & BIT1) > 0)
+        {
+            wsFlags = wsFlags & (~BIT1);
+            destroyWSClient();
         }
         vTaskDelay(100 / portTICK_PERIOD_MS);
     }

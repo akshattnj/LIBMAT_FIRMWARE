@@ -27,9 +27,5 @@ extern "C" void app_main(void)
         } 
     }, "Task", 2048, NULL, 10, NULL);
 
-    while(!isWiFiConnected())
-        vTaskDelay(1000 / portTICK_PERIOD_MS);
-
-    // Important - launch only after WiFi is connected
-    startWSClient();
+    xTaskCreate(wsClientTask, "Websocket", 2048, NULL, 10, NULL);
 }
