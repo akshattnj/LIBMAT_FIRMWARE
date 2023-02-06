@@ -2,7 +2,7 @@
 #define I2C_HANDLER_H
 
 #include "definations.h"
-#include <initializer_list>
+#include <string.h>
 
 extern "C"
 {
@@ -18,6 +18,8 @@ class I2CHandler
 public:
     double humidity;
     double temperature;
+
+    int16_t adcReadings[4];
 
     /**
      * @brief Construct a new I2CHandler object
@@ -36,6 +38,7 @@ public:
         this->config.scl_pullup_en = GPIO_PULLUP_ENABLE;
         this->config.master.clk_speed = clock;
         this->ahtSensorStatus = 0;
+        memset(adcReadings, 0, 4 * sizeof(int16_t));
         return;
     }
 
@@ -67,7 +70,7 @@ public:
                 vTaskDelay(80 / portTICK_PERIOD_MS);
             checkStatusAHT:
                 
-                memset(this->readBufferAHT, 0, AHT_READ_BUFFER);
+                memset(this->readBufferAHT, 0, AHT_READ_BUFFER * sizeof(uint8_t));
                 this->readWriteI2C(AHT_ADDRESS, this->AHTStatusCommand, 1, this->readBufferAHT, 1);
                 if (this->readBufferAHT[0] & AHT_BUSY)
                 {
@@ -75,12 +78,18 @@ public:
                     goto checkStatusAHT;
                 }
 
-                memset(this->readBufferAHT, 0, AHT_READ_BUFFER);
+                memset(this->readBufferAHT, 0, AHT_READ_BUFFER * sizeof(uint8_t));
                 if (this->readI2C(AHT_ADDRESS, this->readBufferAHT, 6))
                 {
                     this->calculateTemperatureAndHumidity();
                 }
             }
+
+            for(int i = 0; i < 4; i++) {
+                adcReadings[i] = this->readADCSingleEnded(i);
+            }
+            ESP_LOGI(I2C_TAG, "Raw ADS: %d %d %d %d", adcReadings[0], adcReadings[1], adcReadings[2], adcReadings[3]);
+
             vTaskDelay(1000 / portTICK_PERIOD_MS);
         }
     }
@@ -102,6 +111,13 @@ private:
     const uint8_t AHTCalibrateCommand[3] = {0xBE, 0x08, 0x00};
     const uint8_t AHTMeasureCommand[3] = {0xAC, 0x33, 0x00};
     const double inv2Pow20 = 1.0 / 1048576.0;
+
+    // ADS1115 Variables
+    const uint16_t MUX_BY_CHANNEL[4] = {
+        ADS1115_REG_CONFIG_MUX_SINGLE_0,
+        ADS1115_REG_CONFIG_MUX_SINGLE_1,
+        ADS1115_REG_CONFIG_MUX_SINGLE_2,
+        ADS1115_REG_CONFIG_MUX_SINGLE_3};
 
     /**
      * @brief Select I2C register to read form and wait for response
@@ -172,7 +188,7 @@ private:
     void setupAHT(uint8_t address)
     {
         vTaskDelay(40 / portTICK_PERIOD_MS);
-        memset(this->readBufferAHT, 0, AHT_READ_BUFFER);
+        memset(this->readBufferAHT, 0, AHT_READ_BUFFER * sizeof(uint8_t));
         if (!(this->readWriteI2C(address, this->AHTStatusCommand, 1, this->readBufferAHT, 1)))
             return;
 
@@ -200,6 +216,79 @@ private:
         this->temperature = (temperatureRaw * inv2Pow20 * 200) - 50;
         ESP_LOGI(I2C_TAG, "Got temperature %f and humidity %f\nDebug: %X %X", this->temperature, this->humidity, humidityRaw, temperatureRaw);
     }
+
+    /**
+     * @brief Convert 16 bit data that is to be sent to ADS1115 into 8 bit pieces before sending
+     * @param reg Register the data is to be sent to
+     * @param data 16 bit data to be written
+     */
+    bool writeADCData(uint8_t reg, uint16_t data)
+    {
+        uint8_t buffer[3];
+        buffer[0] = reg;
+        buffer[1] = data >> 8;
+        buffer[2] = data & 0xFF;
+        return writeI2C(ADS1115_ADDR, buffer, 3);
+    }
+
+    /**
+     * @brief Reads ADC data and returns data as 16 bit unsigned integer
+     * @param reg Register address to read from
+     */
+    uint16_t readWriteADC(uint8_t reg)
+    {
+        uint8_t buffer[1];
+        buffer[0] = reg;
+        uint8_t readBuffer[2];
+        memset(readBuffer, 0, 2 * sizeof(uint8_t));
+        if (readWriteI2C(ADS1115_ADDR, buffer, 1, readBuffer, 2))
+        {
+            return (readBuffer[0] << 8) | readBuffer[1];
+        }
+        else
+            return 0;
+    }
+
+    /**
+     * @brief Reads data from the ADS1115 for the given ADC channel
+     * @param channel The ADC channel data is to be read from
+    */
+    int16_t readADCSingleEnded(uint8_t channel)
+    {
+        if (channel > 3)
+        {
+            ESP_LOGE(I2C_TAG, "Invalid channel");
+            return 0;
+        }
+
+        uint16_t configADC = ADS1115_START | ADS1115_GAIN_4_096 | ADS1115_SINGLE_MODE | ADS1115_860_SPS | ADS1115_NO_COMP | MUX_BY_CHANNEL[channel];
+
+        if (!writeADCData(ADS1115_REG_POINTER_CONFIG, configADC))
+        {
+            ESP_LOGE(I2C_TAG, "I2C Write Error");
+            return 0;
+        }
+        
+        if (!writeADCData(ADS1115_REG_POINTER_LOWTHRESH, 0x0000))
+        {
+            ESP_LOGE(I2C_TAG, "I2C Write Error");
+            return 0;
+        }
+        
+        if (!writeADCData(ADS1115_REG_POINTER_HITHRESH, 0x8000))
+        {
+            ESP_LOGE(I2C_TAG, "I2C Write Error");
+            return 0;
+        }
+        
+        while (!((readWriteADC(ADS1115_REG_POINTER_CONFIG) & 0x8000) > 0))
+        {
+            vTaskDelay(10 / portTICK_PERIOD_MS);
+        }
+        uint16_t convertedValue = readWriteADC(ADS1X15_REG_POINTER_CONVERT);
+        return (int16_t)convertedValue;
+    }
+
 };
 
 #endif
