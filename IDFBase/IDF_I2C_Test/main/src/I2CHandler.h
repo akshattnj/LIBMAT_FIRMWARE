@@ -45,7 +45,7 @@ public:
      */
     void setup()
     {
-        vTaskDelay(100 / portTICK_RATE_MS); // I2C devices initialisation
+        vTaskDelay(100 / portTICK_PERIOD_MS); // I2C devices initialisation
         i2c_param_config(this->portNum, &this->config);
         i2c_driver_install(this->portNum, I2C_MODE_MASTER, 0, 0, 0);
         ESP_LOGI(I2C_TAG, "I2C Initial Setup Complete");
@@ -64,20 +64,24 @@ public:
             if (this->ahtSensorStatus & AHT_ENABLED)
             {
                 this->writeI2C(AHT_ADDRESS, this->AHTMeasureCommand, 3);
-                vTaskDelay(80 / portTICK_RATE_MS);
+                vTaskDelay(80 / portTICK_PERIOD_MS);
             checkStatusAHT:
-                this->readWriteI2C(AHT_ADDRESS, this->AHTStatusCommand, 1, 1);
-                if (this->readBuffer[0] & AHT_BUSY)
+                
+                memset(this->readBufferAHT, 0, AHT_READ_BUFFER);
+                this->readWriteI2C(AHT_ADDRESS, this->AHTStatusCommand, 1, this->readBufferAHT, 1);
+                if (this->readBufferAHT[0] & AHT_BUSY)
                 {
                     ESP_LOGI(I2C_TAG, "AHT sensor busy");
                     goto checkStatusAHT;
                 }
-                if (this->readI2C(AHT_ADDRESS, 7))
+
+                memset(this->readBufferAHT, 0, AHT_READ_BUFFER);
+                if (this->readI2C(AHT_ADDRESS, this->readBufferAHT, 6))
                 {
                     this->calculateTemperatureAndHumidity();
                 }
             }
-            vTaskDelay(1000 / portTICK_RATE_MS);
+            vTaskDelay(1000 / portTICK_PERIOD_MS);
         }
     }
 
@@ -87,10 +91,10 @@ private:
     i2c_config_t config;
     const int sdaPin;
     const int sclPin;
-    uint8_t ahtSensorStatus; // 7 - AHT ON, 6 - Free, 5 - Free, 4 - Free, 3- Free, 2 - Free, 1 - Free, 0 - Free
+    uint8_t ahtSensorStatus; // 7 - Free, 6 - Free, 5 - Free, 4 - Free, 3- Free, 2 - Free, 1 - Free, 0 - AHT ON
 
     // I2C Communication Variables
-    uint8_t readBuffer[I2C_READ_BUFFER];
+    uint8_t readBufferAHT[AHT_READ_BUFFER];
     esp_err_t espError;
 
     // AHT Variable
@@ -105,17 +109,17 @@ private:
      * @param address Address of I2C device
      * @param toWrite Pointer to array that is to be written to I2C device
      * @param writeSize Size of data to be written to device
+     * @param readBuffer Pointer to char array to write I2C read data to
      * @param readSize Size of data to be read from device
      * @return true if communication successful
      * @return false if communication failed
      */
-    bool readWriteI2C(uint8_t address, const uint8_t *toWrite, size_t writeSize, size_t readSize)
+    bool readWriteI2C(uint8_t address, const uint8_t *toWrite, size_t writeSize, uint8_t* readBuffer, size_t readSize)
     {
-        this->espError = i2c_master_write_read_device(I2C_NUM_0, address, toWrite, writeSize, readBuffer, readSize, 100 / portTICK_RATE_MS);
-        if (espError > 0)
+        this->espError = i2c_master_write_read_device(this->portNum, address, toWrite, writeSize, readBuffer, readSize, 100 / portTICK_PERIOD_MS);
+        if (espError != ESP_OK)
         {
-            ESP_LOGE(I2C_TAG, "I2C read-write error on AHT21B with code: %d", espError);
-            this->ahtSensorStatus = this->ahtSensorStatus & ~AHT_ENABLED;
+            ESP_LOGE(I2C_TAG, "I2C read-write error with code: %d", espError);
             return false;
         }
         return true;
@@ -125,16 +129,17 @@ private:
      * @brief Read from I2C device
      *
      * @param address Address of I2C device
+     * @param readBuffer Pointer to char array to write I2C read data to
      * @param readSize Size of data to be read from device
      * @return true if communication successful
      * @return false if communication failed
      */
-    bool readI2C(uint8_t address, size_t readSize)
+    bool readI2C(uint8_t address, uint8_t* readBuffer, size_t readSize)
     {
-        this->espError = i2c_master_read_from_device(portNum, address, readBuffer, 6, 100 / portTICK_RATE_MS);
-        if (this->espError > 0)
+        this->espError = i2c_master_read_from_device(this->portNum, address, readBuffer, readSize, 100 / portTICK_PERIOD_MS);
+        if (this->espError != ESP_OK)
         {
-            ESP_LOGE(I2C_TAG, "I2C read error on AHT21B with code: %d", espError);
+            ESP_LOGE(I2C_TAG, "I2C read error with code: %d", espError);
             return false;
         }
         return true;
@@ -150,10 +155,10 @@ private:
      */
     bool writeI2C(uint8_t address, const uint8_t *toWrite, size_t writeSize)
     {
-        this->espError = i2c_master_write_to_device(this->portNum, address, (uint8_t *)toWrite, writeSize, 100 / portTICK_RATE_MS);
-        if (this->espError > 0)
+        this->espError = i2c_master_write_to_device(this->portNum, address, toWrite, writeSize, 100 / portTICK_PERIOD_MS);
+        if (this->espError != ESP_OK)
         {
-            ESP_LOGE(I2C_TAG, "Communication failure with AHT with code:%d", this->espError);
+            ESP_LOGE(I2C_TAG, "I2C write failure with code:%d", this->espError);
             return false;
         }
         return true;
@@ -162,76 +167,38 @@ private:
     /**
      * @brief Initial setup for AHT21B
      *
-     * @param address
+     * @param address address of AHT21B
      */
     void setupAHT(uint8_t address)
     {
-        if (!(this->readWriteI2C(address, this->AHTStatusCommand, 1, 1)))
+        vTaskDelay(40 / portTICK_PERIOD_MS);
+        memset(this->readBufferAHT, 0, AHT_READ_BUFFER);
+        if (!(this->readWriteI2C(address, this->AHTStatusCommand, 1, this->readBufferAHT, 1)))
             return;
 
-        if (!(readBuffer[0] & AHT_CALIB))
+        if (!(readBufferAHT[0] & AHT_CALIB))
         {
-            ESP_LOGI(I2C_TAG, "AHT is uncalibrated with response: %d. Initialising...", readBuffer[0]);
-            if (!(this->writeI2C(address, this->AHTCalibrateCommand, 1)))
+            ESP_LOGI(I2C_TAG, "AHT is uncalibrated with response: %d. Initialising...", readBufferAHT[0]);
+            if (!(this->writeI2C(address, this->AHTCalibrateCommand, 3)))
                 return;
+            vTaskDelay(10 / portTICK_PERIOD_MS);
         }
         this->ahtSensorStatus = this->ahtSensorStatus | AHT_ENABLED;
-        ESP_LOGI(I2C_TAG, "AHT21B Setup Complete Status %d", this->ahtSensorStatus);
-    }
-
-    /**
-     * @brief Initial setup for MPU6050
-     *
-     * @param address
-     */
-    void setupMPU(uint8_t address)
-    {
-        ESP_LOGI(I2C_TAG, "MPU6050 Setup Complete");
+        ESP_LOGI(I2C_TAG, "AHT21B Setup Complete Status %X", this->ahtSensorStatus);
     }
 
     /**
      * @brief Calculate temperature and humidity for the AHT21B sensor. Refer to documentation folder for details.
-     * Uses data stored in the readBuffer.
+     * Uses data stored in the readBufferAHT.
      *
      */
     void calculateTemperatureAndHumidity()
     {
-        uint32_t humidityRaw = (this->readBuffer[1] << 12) | (this->readBuffer[2] << 4) | (this->readBuffer[3] >> 4);
-        uint32_t temperatureRaw = ((this->readBuffer[3] & 0x0F) << 16) | (this->readBuffer[4] << 8) | (this->readBuffer[5]);
+        uint32_t humidityRaw = (this->readBufferAHT[1] << 12) | (this->readBufferAHT[2] << 4) | (this->readBufferAHT[3] >> 4);
+        uint32_t temperatureRaw = ((this->readBufferAHT[3] & 0x0F) << 16) | (this->readBufferAHT[4] << 8) | (this->readBufferAHT[5]);
         this->humidity = humidityRaw * inv2Pow20 * 100;
         this->temperature = (temperatureRaw * inv2Pow20 * 200) - 50;
         ESP_LOGI(I2C_TAG, "Got temperature %f and humidity %f\nDebug: %X %X", this->temperature, this->humidity, humidityRaw, temperatureRaw);
-    }
-
-    int16_t readAdsData(uint8_t channel)
-    {
-        if (channel > 3)
-        {
-            ESP_LOGE(I2C_TAG, "Invalid channel name %d. Pls contact developer", channel);
-            return 0;
-        }
-        uint8_t writeBuffer[3];
-        uint16_t adsConfig = 0x0000;
-        adsConfig = adsConfig | ADS1115_SINGLE_READ | ADS1115_GAIN | ADS1115_DATA_RATE | MUX_SELECT[channel] | ADS1115_START;
-        writeBuffer[0] = (uint8_t)(adsConfig >> 8);
-        writeBuffer[1] = (uint8_t)(adsConfig & 0xFF);
-        this->writeI2C(ADS1115_DATA_REG, writeBuffer, 2);
-
-        writeBuffer[0] = 0x80;
-        writeBuffer[1] = 0x00;
-        this->writeI2C(ADS1115_HIGH_THRESH, writeBuffer, 2);
-
-        writeBuffer[0] = 0x00;
-        writeBuffer[1] = 0x00;
-        this->writeI2C(ADS1115_LOW_THRESH, writeBuffer, 2);
-
-        while (1)
-        {
-            this->readI2C(ADS1115_DATA_REG, 2);
-            if((readBuffer[0] & 0x80) != 0)
-                break;
-            vTaskDelay(1 / portTICK_RATE_MS);
-        }
     }
 };
 
