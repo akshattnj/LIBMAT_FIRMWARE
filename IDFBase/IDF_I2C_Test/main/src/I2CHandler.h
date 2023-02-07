@@ -19,7 +19,7 @@ public:
     double humidity;
     double temperature;
 
-    int16_t adcReadings[4];
+    double adcReadings[4];
 
     /**
      * @brief Construct a new I2CHandler object
@@ -86,9 +86,9 @@ public:
             }
 
             for(int i = 0; i < 4; i++) {
-                adcReadings[i] = this->readADCSingleEnded(i);
+                adcReadings[i] = this->computeADCVolts(this->readADCSingleEnded(i));
             }
-            ESP_LOGI(I2C_TAG, "Raw ADS: %d %d %d %d", adcReadings[0], adcReadings[1], adcReadings[2], adcReadings[3]);
+            ESP_LOGI(I2C_TAG, "Raw ADS: %f %f %f %f", adcReadings[0], adcReadings[1], adcReadings[2], adcReadings[3]);
 
             vTaskDelay(1000 / portTICK_PERIOD_MS);
         }
@@ -118,6 +118,8 @@ private:
         ADS1115_REG_CONFIG_MUX_SINGLE_1,
         ADS1115_REG_CONFIG_MUX_SINGLE_2,
         ADS1115_REG_CONFIG_MUX_SINGLE_3};
+    const double inv2Pow15 = 1.0 / 32768.0;
+    const double referenceVoltage = 4.096;
 
     /**
      * @brief Select I2C register to read form and wait for response
@@ -287,6 +289,14 @@ private:
         }
         uint16_t convertedValue = readWriteADC(ADS1X15_REG_POINTER_CONVERT);
         return (int16_t)convertedValue;
+    }
+
+    /**
+     * @brief Conversion formulae to convert ADC output into corresponding volts
+     * @param reading ADC Reading
+    */
+    double computeADCVolts(int16_t reading) {
+        return reading * inv2Pow15 * referenceVoltage;
     }
 
 };
