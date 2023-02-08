@@ -168,12 +168,12 @@ static esp_err_t requestHandler(httpd_req_t *req)
     ESP_LOGI(SERV_TAG, "Got Data: %s", wsPacket.payload);
 
     // Process packet contents
-    if (strncmp("CONNECT", (char *)wsPacket.payload, 7) == 0 && wsClientListSize < 12)
+    if (strncmp("CONNECT", (char *)wsPacket.payload, 7) == 0)
     {
         free(buffer);
         buffer = calloc(1, 10);
         wsPacket.payload = buffer;
-        if (wsClientListSize < 12)
+        if (wsClientListSize < MAX_SOCKETS)
         {
             // Make sure device is not already registered
             if(scanForDevice(httpd_req_to_sockfd(req)) != -1) {
