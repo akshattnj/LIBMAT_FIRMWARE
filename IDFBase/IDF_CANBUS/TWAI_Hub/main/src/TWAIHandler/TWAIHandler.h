@@ -12,4 +12,7 @@
 esp_err_t startTWAI();
 esp_err_t endTWAI();
 
+void taskReceiveTWAI(void *params);
+void taskSendTWAI(void *params);
+
 #endif

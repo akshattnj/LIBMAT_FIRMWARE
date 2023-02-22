@@ -15,3 +15,27 @@ esp_err_t endTWAI()
 {
     return twai_driver_uninstall();
 }
+
+/**
+ * @brief Task that scans CAN bus for data
+ * TODO: Populate this
+*/
+void taskReceiveTWAI(void *params)
+{
+    while(1) {
+
+    }
+    vTaskDelete(NULL);
+}
+
+/**
+ * @brief Task that transmits to CAN bus
+ * TODO: Populate this
+*/
+void taskSendTWAI(void *params)
+{
+    while(1) {
+
+    }
+    vTaskDelete(NULL);
+}
