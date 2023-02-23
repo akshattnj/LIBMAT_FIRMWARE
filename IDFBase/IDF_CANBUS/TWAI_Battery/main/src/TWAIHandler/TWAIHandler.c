@@ -7,9 +7,6 @@ const twai_message_t pingMessage = {.identifier = ID_MASTER_PING, .data_length_c
 const twai_message_t requestMessage = {.identifier = ID_MASTER_REQUEST, .data_length_code = 0, .data = {0, 0, 0, 0, 0, 0, 0, 0}};
 const twai_message_t doneMessage = {.identifier = ID_MASTER_DONE, .data_length_code = 0, .data = {0, 0, 0, 0, 0, 0, 0, 0}};
 
-QueueHandle_t txTaskQueue;
-QueueHandle_t rxTaskQueue;
-
 esp_err_t startTWAI()
 {
     return twai_driver_install(&generalConfig, &timingConfig, &filterConfig);
@@ -17,11 +14,6 @@ esp_err_t startTWAI()
 esp_err_t endTWAI()
 {
     return twai_driver_uninstall();
-}
-
-void taskControlTWAI(void *params)
-{
-
 }
 
 /**
@@ -38,7 +30,7 @@ void taskReceiveTWAI(void *params)
         errorCode = twai_receive(&rxMessage, portMAX_DELAY);
         if (errorCode)
         {
-            // ESP_LOGE(TWAI_TAG, "Got error: %d", errorCode);
+            ESP_LOGE(TWAI_TAG, "Got error: %d", errorCode);
         }
         else
         {
@@ -56,16 +48,11 @@ void taskReceiveTWAI(void *params)
  */
 void taskSendTWAI(void *params)
 {
-    esp_err_t errorCode;
     while (1)
     {
-        
-        errorCode = twai_transmit(&pingMessage, portMAX_DELAY);
-        if(errorCode)
-        {
-            ESP_LOGE(TWAI_TAG, "TWAI Send Error: %d", errorCode);
-        }
-        vTaskDelay(500 / portTICK_PERIOD_MS);
+        ESP_LOGI(TWAI_TAG, "Sending Ping");
+        twai_transmit(&pingMessage, portMAX_DELAY);
+        vTaskDelay(250 / portTICK_PERIOD_MS);
     }
     vTaskDelete(NULL);
 }

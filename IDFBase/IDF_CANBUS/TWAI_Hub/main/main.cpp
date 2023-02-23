@@ -10,5 +10,14 @@ extern "C"
 
 extern "C" void app_main(void)
 {
-
+    esp_err_t errorCode = startTWAI();
+    if (errorCode)
+    {
+        ESP_LOGE(MAIN_TAG, "TWAI driver install fail with %d", errorCode);
+    }
+    else
+    {
+        xTaskCreate(taskSendTWAI, "TWAI Send", 2048, NULL, 10, NULL);
+        xTaskCreate(taskReceiveTWAI, "TWAI Recieve", 2048, NULL, 10, NULL);
+    }
 }
