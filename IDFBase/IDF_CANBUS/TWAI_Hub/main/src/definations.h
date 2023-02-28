@@ -13,7 +13,7 @@
 #define MAIN_TAG "Main"
 #define TWAI_TAG "TWAI"
 
-#define TWAI_RX 27
-#define TWAI_TX 26
+#define TWAI_RX 19
+#define TWAI_TX 18
 
 #endif

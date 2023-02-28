@@ -78,13 +78,14 @@ public:
                 {
                     while (1)
                     {
-                        ESP_LOGI(TWAI_TAG, "Waiting for ping response");
+                        ESP_LOGI(TWAI_TAG, "Waiting for master ping");
                         memset(&rxMessage, 0, sizeof(twai_message_t));
                         twai_receive(&rxMessage, portMAX_DELAY);
                         if (rxMessage.identifier == parameters.expectedIdentifier)
                         {
-                            xSemaphoreGive(ctrlSem);
-                            xSemaphoreGive(doneSem);
+                            ESP_LOGI(TWAI_TAG, "Received master ping");
+                            parameters.setTwaiParameters(ID_PING_RESP, 0);
+                            xQueueSend(txTaskQueue, &parameters, portMAX_DELAY);
                             break;
                         }
                     }
@@ -106,17 +107,14 @@ public:
             {
                 if (parameters.taskType == 0)
                 {
-                    ESP_LOGI(TWAI_TAG, "Sending ping request");
-                    twai_message_t pingMessage = {.ss = 1, .identifier = parameters.expectedIdentifier, .data_length_code = 0, .data = {0, 0, 0, 0, 0, 0, 0, 0}};
-                    while (xSemaphoreTake(doneSem, 0) != pdTRUE)
+                    ESP_LOGI(TWAI_TAG, "Sending ping response");
+                    twai_message_t pingMessage = {.identifier = parameters.expectedIdentifier, .data_length_code = 0, .data = {0, 0, 0, 0, 0, 0, 0, 0}};
+                    esp_err_t error = twai_transmit(&pingMessage, portMAX_DELAY);
+                    if(error != 0)
                     {
-                        esp_err_t error = twai_transmit(&pingMessage, portMAX_DELAY);
-                        if(error != 0)
-                        {
-                            ESP_LOGE(TWAI_TAG, "Error sending ping request: %d", error);
-                        }
-                        vTaskDelay(500 / portTICK_PERIOD_MS);
+                        ESP_LOGE(TWAI_TAG, "Error sending ping request: %d", error);
                     }
+                    xSemaphoreGive(ctrlSem);
                 }
             }
         }
@@ -134,8 +132,6 @@ public:
         {
             ESP_LOGI(TWAI_TAG, "Starting TWAI communication");
             parameters.setTwaiParameters(ID_MASTER_PING, 0);
-            xQueueSend(txTaskQueue, &parameters, portMAX_DELAY);
-            parameters.setTwaiParameters(ID_PING_RESP, 0);
             xQueueSend(rxTaskQueue, &parameters, portMAX_DELAY);
 
             xSemaphoreTake(ctrlSem, portMAX_DELAY);
