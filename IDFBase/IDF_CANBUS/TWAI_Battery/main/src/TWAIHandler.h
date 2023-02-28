@@ -37,9 +37,6 @@ public:
     {
         ESP_LOGI(TWAI_TAG, "Starting TWAI");
         txTaskQueue = xQueueCreate(1, sizeof(TWAIParameters));
-        rxTaskQueue = xQueueCreate(1, sizeof(TWAIParameters));
-        ctrlSem = xSemaphoreCreateBinary();
-        doneSem = xSemaphoreCreateBinary();
         gpio_reset_pin(txTWAI);
         gpio_reset_pin(rxTWAI);
         const twai_timing_config_t timingConfig = TWAI_TIMING_CONFIG_25KBITS();
@@ -56,9 +53,6 @@ public:
     {
         ESP_LOGI(TWAI_TAG, "Ending TWAI");
         vQueueDelete(txTaskQueue);
-        vQueueDelete(rxTaskQueue);
-        vSemaphoreDelete(ctrlSem);
-        vSemaphoreDelete(doneSem);
         ESP_ERROR_CHECK(twai_stop());
         return twai_driver_uninstall();
     }
@@ -68,28 +62,20 @@ public:
      */
     void taskReceiveTWAI(void *params)
     {
-        twai_message_t rxMessage;
         TWAIParameters parameters;
+        ESP_ERROR_CHECK(twai_start());
+        twai_message_t rxMessage;
         while (1)
         {
-            if (xQueueReceive(rxTaskQueue, &parameters, portMAX_DELAY) == pdTRUE)
+            ESP_LOGI(TWAI_TAG, "Waiting for master ping");
+            memset(&rxMessage, 0, sizeof(twai_message_t));
+            twai_receive(&rxMessage, portMAX_DELAY);
+            if (rxMessage.identifier == ID_MASTER_PING)
             {
-                if (parameters.taskType == 0)
-                {
-                    while (1)
-                    {
-                        ESP_LOGI(TWAI_TAG, "Waiting for master ping");
-                        memset(&rxMessage, 0, sizeof(twai_message_t));
-                        twai_receive(&rxMessage, portMAX_DELAY);
-                        if (rxMessage.identifier == parameters.expectedIdentifier)
-                        {
-                            ESP_LOGI(TWAI_TAG, "Received master ping");
-                            parameters.setTwaiParameters(ID_PING_RESP, 0);
-                            xQueueSend(txTaskQueue, &parameters, portMAX_DELAY);
-                            break;
-                        }
-                    }
-                }
+                ESP_LOGI(TWAI_TAG, "Received master ping");
+                parameters.setTwaiParameters(ID_PING_RESP, 0);
+                xQueueSend(txTaskQueue, &parameters, portMAX_DELAY);
+                continue;
             }
         }
         vTaskDelete(NULL);
@@ -114,30 +100,9 @@ public:
                     {
                         ESP_LOGE(TWAI_TAG, "Error sending ping request: %d", error);
                     }
-                    xSemaphoreGive(ctrlSem);
                 }
             }
         }
-        vTaskDelete(NULL);
-    }
-
-    /**
-     * @brief Task to control the TWAI communication
-     */
-    void taskControlTWAI(void *params)
-    {
-        ESP_ERROR_CHECK(twai_start());
-        TWAIParameters parameters;
-        while (1)
-        {
-            ESP_LOGI(TWAI_TAG, "Starting TWAI communication");
-            parameters.setTwaiParameters(ID_MASTER_PING, 0);
-            xQueueSend(rxTaskQueue, &parameters, portMAX_DELAY);
-
-            xSemaphoreTake(ctrlSem, portMAX_DELAY);
-            vTaskDelay(3000 / portTICK_PERIOD_MS);
-        }
-        endTWAI();
         vTaskDelete(NULL);
     }
 
@@ -164,9 +129,6 @@ private:
     const twai_message_t doneMessage = {.identifier = ID_MASTER_DONE, .data_length_code = 0, .data = {0, 0, 0, 0, 0, 0, 0, 0}};
 
     QueueHandle_t txTaskQueue;
-    QueueHandle_t rxTaskQueue;
-    SemaphoreHandle_t doneSem;
-    SemaphoreHandle_t ctrlSem;
 };
 
 #endif
