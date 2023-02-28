@@ -36,8 +36,8 @@ public:
     esp_err_t startTWAI()
     {
         ESP_LOGI(TWAI_TAG, "Starting TWAI");
-        txTaskQueue = xQueueCreate(1, sizeof(TWAIParameters));
-        rxTaskQueue = xQueueCreate(1, sizeof(TWAIParameters));
+        txTaskQueue = xQueueCreate(1, sizeof(TWAITaskParameters));
+        rxTaskQueue = xQueueCreate(1, sizeof(TWAITaskParameters));
         ctrlSem = xSemaphoreCreateBinary();
         doneSem = xSemaphoreCreateBinary();
         gpio_reset_pin(txTWAI);
@@ -69,7 +69,7 @@ public:
     void taskReceiveTWAI(void *params)
     {
         twai_message_t rxMessage;
-        TWAIParameters parameters;
+        TWAITaskParameters parameters;
         while (1)
         {
             if (xQueueReceive(rxTaskQueue, &parameters, portMAX_DELAY) == pdTRUE)
@@ -99,7 +99,7 @@ public:
      */
     void taskSendTWAI(void *params)
     {
-        TWAIParameters parameters;
+        TWAITaskParameters parameters;
         while (1)
         {
             if (xQueueReceive(txTaskQueue, &parameters, portMAX_DELAY) == pdTRUE)
@@ -129,13 +129,15 @@ public:
     void taskControlTWAI(void *params)
     {
         ESP_ERROR_CHECK(twai_start());
-        TWAIParameters parameters;
+        TWAITaskParameters parameters;
         while (1)
         {
             ESP_LOGI(TWAI_TAG, "Starting TWAI communication");
-            parameters.setTwaiParameters(ID_MASTER_PING, 0);
+            parameters.expectedIdentifier = ID_MASTER_PING;
+            parameters.taskType = 0;
             xQueueSend(txTaskQueue, &parameters, portMAX_DELAY);
-            parameters.setTwaiParameters(ID_PING_RESP, 0);
+            parameters.expectedIdentifier = ID_PING_RESP;
+            parameters.taskType = 0;
             xQueueSend(rxTaskQueue, &parameters, portMAX_DELAY);
 
             xSemaphoreTake(ctrlSem, portMAX_DELAY);
@@ -146,21 +148,10 @@ public:
     }
 
 private:
-    /**
-     * @brief Wrapper class for TWAI parameters
-    */
-    class TWAIParameters
-    {
-    public:
+    typedef struct TWAITaskParameters{
         uint32_t expectedIdentifier;
         uint8_t taskType;
-
-        void setTwaiParameters(uint32_t id, uint8_t task)
-        {
-            this->expectedIdentifier = id;
-            this->taskType = task;
-        }
-    };
+    } TWAITaskParameters;
 
     gpio_num_t txTWAI;
     gpio_num_t rxTWAI;

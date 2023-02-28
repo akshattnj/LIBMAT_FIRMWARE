@@ -36,7 +36,7 @@ public:
     esp_err_t startTWAI()
     {
         ESP_LOGI(TWAI_TAG, "Starting TWAI");
-        txTaskQueue = xQueueCreate(1, sizeof(TWAIParameters));
+        txTaskQueue = xQueueCreate(1, sizeof(TWAITaskParameters));
         gpio_reset_pin(txTWAI);
         gpio_reset_pin(rxTWAI);
         const twai_timing_config_t timingConfig = TWAI_TIMING_CONFIG_25KBITS();
@@ -62,7 +62,7 @@ public:
      */
     void taskReceiveTWAI(void *params)
     {
-        TWAIParameters parameters;
+        TWAITaskParameters parameters;
         ESP_ERROR_CHECK(twai_start());
         twai_message_t rxMessage;
         while (1)
@@ -73,7 +73,8 @@ public:
             if (rxMessage.identifier == ID_MASTER_PING)
             {
                 ESP_LOGI(TWAI_TAG, "Received master ping");
-                parameters.setTwaiParameters(ID_PING_RESP, 0);
+                parameters.expectedIdentifier = ID_PING_RESP;
+                parameters.taskType = 0;
                 xQueueSend(txTaskQueue, &parameters, portMAX_DELAY);
                 continue;
             }
@@ -86,7 +87,7 @@ public:
      */
     void taskSendTWAI(void *params)
     {
-        TWAIParameters parameters;
+        TWAITaskParameters parameters;
         while (1)
         {
             if (xQueueReceive(txTaskQueue, &parameters, portMAX_DELAY) == pdTRUE)
@@ -110,18 +111,10 @@ private:
     /**
      * @brief Wrapper class for TWAI parameters
     */
-    class TWAIParameters
-    {
-    public:
+    typedef struct TWAITaskParameters{
         uint32_t expectedIdentifier;
         uint8_t taskType;
-
-        void setTwaiParameters(uint32_t id, uint8_t task)
-        {
-            this->expectedIdentifier = id;
-            this->taskType = task;
-        }
-    };
+    } TWAITaskParameters;
 
     gpio_num_t txTWAI;
     gpio_num_t rxTWAI;
