@@ -1,10 +1,10 @@
 #ifndef DEFINATIONS_H
 #define DEFINATIONS_H
 
-#define ID_MASTER_PING      0x0B0
-#define ID_MASTER_REQUEST   0x0B1
-#define ID_MASTER_DONE      0x0B2
-#define ID_MASTER_DATA      0x0B3
+#define ID_MASTER_PING      0x000
+#define ID_MASTER_REQUEST   0x001
+#define ID_MASTER_DONE      0x002
+#define ID_MASTER_DATA      0x003
 
 #define ID_PING_RESP      0x0A0
 #define ID_REQUEST_RESP   0x0A1

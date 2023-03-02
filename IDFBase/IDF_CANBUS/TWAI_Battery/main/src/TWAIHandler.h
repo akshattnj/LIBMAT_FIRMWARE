@@ -30,6 +30,11 @@ public:
         this->rxTWAI = rxTwai;
     }
 
+    void setIdentifierHeader(uint8_t identifierHeader)
+    {
+        this->identifierHeader = identifierHeader << 4;
+    }
+
     /**
      * @brief Build semaphores, queues and install TWAI driver
      */
@@ -63,18 +68,38 @@ public:
     void taskReceiveTWAI(void *params)
     {
         TWAITaskParameters parameters;
-        ESP_ERROR_CHECK(twai_start());
         twai_message_t rxMessage;
+        ESP_ERROR_CHECK(twai_start());
         while (1)
         {
-            ESP_LOGI(TWAI_TAG, "Waiting for master ping");
+            if(identifierHeader == 0x00)
+            {
+                vTaskDelay(500 / portTICK_PERIOD_MS);
+                continue;
+            }
             memset(&rxMessage, 0, sizeof(twai_message_t));
             twai_receive(&rxMessage, portMAX_DELAY);
-            if (rxMessage.identifier == ID_MASTER_PING)
+            if (rxMessage.identifier == (ID_MASTER_PING | identifierHeader))
             {
                 ESP_LOGI(TWAI_TAG, "Received master ping");
                 parameters.expectedIdentifier = ID_PING_RESP;
                 parameters.taskType = 0;
+                xQueueSend(txTaskQueue, &parameters, portMAX_DELAY);
+                continue;
+            }
+            else if(rxMessage.identifier == (ID_MASTER_REQUEST | identifierHeader))
+            {
+                ESP_LOGI(TWAI_TAG, "Received master request");
+                parameters.expectedIdentifier = ID_REQUEST_RESP;
+                parameters.taskType = 1;
+                xQueueSend(txTaskQueue, &parameters, portMAX_DELAY);
+                continue;
+            }
+            else if(rxMessage.identifier == (ID_MASTER_DATA | identifierHeader))
+            {
+                ESP_LOGI(TWAI_TAG, "Received master data");
+                parameters.expectedIdentifier = ID_DATA_RESP;
+                parameters.taskType = 2;
                 xQueueSend(txTaskQueue, &parameters, portMAX_DELAY);
                 continue;
             }
@@ -102,6 +127,49 @@ public:
                         ESP_LOGE(TWAI_TAG, "Error sending ping request: %d", error);
                     }
                 }
+                else if(parameters.taskType == 1) {
+                    ESP_LOGI(TWAI_TAG, "Sending request response");
+                    char toTransmit[50];
+                    size_t size = sprintf(toTransmit, "{\"CusID\":\"%s\"}", this->assignedCustomer);
+                    twai_message_t requestMessage;
+                    if(size <= 8)
+                    {
+                        requestMessage.data_length_code = size;
+                        memcpy(requestMessage.data, toTransmit, size);
+                        twai_transmit(&requestMessage, portMAX_DELAY);
+                    }
+                    else
+                    {
+                        uint8_t chunks = size / 8;
+                        uint8_t remainder = size % 8;
+                        for(int i = 0; i < chunks; i++)
+                        {
+                            memset(&requestMessage, 0, sizeof(twai_message_t));
+                            requestMessage.identifier = parameters.expectedIdentifier;
+                            requestMessage.data_length_code = 8;
+                            memcpy(requestMessage.data, toTransmit + (i * 8), 8);
+                            twai_transmit(&requestMessage, portMAX_DELAY);
+                        }
+                        memset(&requestMessage, 0, sizeof(twai_message_t));
+                        requestMessage.identifier = parameters.expectedIdentifier;
+                        requestMessage.data_length_code = remainder;
+                        memcpy(requestMessage.data, toTransmit + (chunks * 8), remainder);
+                        twai_transmit(&requestMessage, portMAX_DELAY);
+                    }
+                    memset(&requestMessage, 0, sizeof(twai_message_t));
+                    requestMessage.identifier = (ID_MASTER_DONE | identifierHeader);
+                    requestMessage.data_length_code = 0;
+                    twai_transmit(&requestMessage, portMAX_DELAY);
+                }
+                else if(parameters.taskType == 2) {
+                    ESP_LOGI(TWAI_TAG, "Sending data response");
+                    twai_message_t dataMessage = {.identifier = parameters.expectedIdentifier, .data_length_code = 0, .data = {0, 0, 0, 0, 0, 0, 0, 0}};
+                    esp_err_t error = twai_transmit(&dataMessage, portMAX_DELAY);
+                    if(error != 0)
+                    {
+                        ESP_LOGE(TWAI_TAG, "Error sending data response: %d", error);
+                    }
+                }
             }
         }
         vTaskDelete(NULL);
@@ -118,9 +186,8 @@ private:
 
     gpio_num_t txTWAI;
     gpio_num_t rxTWAI;
-    const twai_message_t requestMessage = {.identifier = ID_MASTER_REQUEST, .data_length_code = 0, .data = {0, 0, 0, 0, 0, 0, 0, 0}};
-    const twai_message_t doneMessage = {.identifier = ID_MASTER_DONE, .data_length_code = 0, .data = {0, 0, 0, 0, 0, 0, 0, 0}};
-
+    uint32_t identifierHeader = 0x0B0;
+    char *assignedCustomer = "TestCustomer";
     QueueHandle_t txTaskQueue;
 };
 
