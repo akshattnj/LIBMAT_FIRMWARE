@@ -9,6 +9,9 @@
 
 #define ESP_MAXIMUM_RETRY 5
 
+#define DEVICE_ACCESS_ID "DEVICE_ACCESS_ID"
+
 #define WIFI_TAG "WiFi"
+#define MQTT_TAG "MQTT"
 
 #endif
