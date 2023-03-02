@@ -1,4 +1,14 @@
 #ifndef DEFINATIONS_H
 #define DEFINATIONS_H
 
+#define SSID "SSID"
+#define PASSWORD "PASSWORD"
+
+#define WIFI_CONNECTING BIT0
+#define WIFI_CONNECTED BIT1
+
+#define ESP_MAXIMUM_RETRY 5
+
+#define WIFI_TAG "WiFi"
+
 #endif
