@@ -1,0 +1,156 @@
+{
+  "title": "GPIO Toggle Board",
+  "image": null,
+  "mobileHide": false,
+  "mobileOrder": null,
+  "configuration": {
+    "description": "",
+    "widgets": {
+      "db0018e0-e8a3-6f75-45dc-298a9d6389f3": {
+        "isSystemType": true,
+        "bundleAlias": "gpio_widgets",
+        "typeAlias": "basic_gpio_control",
+        "type": "rpc",
+        "title": "New widget",
+        "image": null,
+        "description": null,
+        "sizeX": 4,
+        "sizeY": 2,
+        "config": {
+          "targetDeviceAliases": [],
+          "showTitle": true,
+          "backgroundColor": "#fff",
+          "color": "rgba(0, 0, 0, 0.87)",
+          "padding": "0px",
+          "settings": {
+            "switchPanelBackgroundColor": "#b71c1c",
+            "gpioList": [
+              {
+                "pin": 2,
+                "label": "GPIO 2",
+                "row": 0,
+                "col": 0
+              },
+              {
+                "pin": 4,
+                "label": "GPIO 4",
+                "row": 0,
+                "col": 1
+              },
+              {
+                "pin": 22,
+                "label": "GPIO 22",
+                "row": 1,
+                "col": 0
+              },
+              {
+                "pin": 23,
+                "label": "GPIO 23",
+                "row": 1,
+                "col": 1
+              }
+            ],
+            "requestTimeout": 500,
+            "gpioStatusRequest": {
+              "method": "getGpioStatus",
+              "paramsBody": "{}"
+            },
+            "gpioStatusChangeRequest": {
+              "method": "setGpioStatus",
+              "paramsBody": "{\n   \"pin\": \"{$pin}\",\n   \"enabled\": \"{$enabled}\"\n}"
+            },
+            "parseGpioStatusFunction": "console.log(body, pin);\nreturn body[pin] === true;"
+          },
+          "title": "New Basic GPIO Control",
+          "datasources": [],
+          "targetDeviceAliasIds": [
+            "19b7e762-befb-6d14-eef7-0b92dfc272b0"
+          ]
+        },
+        "row": 0,
+        "col": 0,
+        "id": "db0018e0-e8a3-6f75-45dc-298a9d6389f3"
+      }
+    },
+    "states": {
+      "default": {
+        "name": "GPIO Toggle Board",
+        "root": true,
+        "layouts": {
+          "main": {
+            "widgets": {
+              "db0018e0-e8a3-6f75-45dc-298a9d6389f3": {
+                "sizeX": 4,
+                "sizeY": 2,
+                "row": 0,
+                "col": 0
+              }
+            },
+            "gridSettings": {
+              "backgroundColor": "#eeeeee",
+              "columns": 24,
+              "margin": 10,
+              "backgroundSizeMode": "100%"
+            }
+          }
+        }
+      }
+    },
+    "entityAliases": {
+      "19b7e762-befb-6d14-eef7-0b92dfc272b0": {
+        "id": "19b7e762-befb-6d14-eef7-0b92dfc272b0",
+        "alias": "Test",
+        "filter": {
+          "type": "singleEntity",
+          "resolveMultiple": false,
+          "singleEntity": {
+            "entityType": "DEVICE",
+            "id": "088070c0-38d8-11ed-a339-0708081d40ce"
+          }
+        }
+      }
+    },
+    "filters": {},
+    "timewindow": {
+      "displayValue": "",
+      "hideInterval": false,
+      "hideLastInterval": false,
+      "hideQuickInterval": false,
+      "hideAggregation": false,
+      "hideAggInterval": false,
+      "hideTimezone": false,
+      "selectedTab": 0,
+      "realtime": {
+        "realtimeType": 0,
+        "interval": 1000,
+        "timewindowMs": 60000,
+        "quickInterval": "CURRENT_DAY"
+      },
+      "history": {
+        "historyType": 0,
+        "interval": 1000,
+        "timewindowMs": 60000,
+        "fixedTimewindow": {
+          "startTimeMs": 1677710404277,
+          "endTimeMs": 1677796804277
+        },
+        "quickInterval": "CURRENT_DAY"
+      },
+      "aggregation": {
+        "type": "AVG",
+        "limit": 2500
+      }
+    },
+    "settings": {
+      "stateControllerId": "entity",
+      "showTitle": false,
+      "showDashboardsSelect": true,
+      "showEntitiesSelect": true,
+      "showDashboardTimewindow": true,
+      "showDashboardExport": true,
+      "toolbarAlwaysOpen": true
+    }
+  },
+  "externalId": null,
+  "name": "GPIO Toggle Board"
+}
