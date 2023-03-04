@@ -149,6 +149,7 @@ public:
                             requestMessage.data_length_code = 8;
                             memcpy(requestMessage.data, toTransmit + (i * 8), 8);
                             twai_transmit(&requestMessage, portMAX_DELAY);
+                            ESP_LOGI(TWAI_TAG, "Sent chunk %d %s", i, (char *)requestMessage.data);
                         }
                         memset(&requestMessage, 0, sizeof(twai_message_t));
                         requestMessage.identifier = parameters.expectedIdentifier;

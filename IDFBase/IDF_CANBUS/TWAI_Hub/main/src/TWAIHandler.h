@@ -89,6 +89,31 @@ public:
                         }
                     }
                 }
+
+                else if(parameters.taskType == 1)
+                {
+                    memset(&incomingDataParameters, 0, sizeof(incomingDataParameters));
+                    while(1) 
+                    {
+                        ESP_LOGI(TWAI_TAG, "Waiting for data");
+                        memset(&rxMessage, 0, sizeof(twai_message_t));
+                        twai_receive(&rxMessage, portMAX_DELAY);
+                        if (rxMessage.identifier == parameters.expectedIdentifier)
+                        {
+                            ESP_LOGI(TWAI_TAG, "Data received");
+                            strncat(incomingDataParameters, (char *)rxMessage.data, rxMessage.data_length_code);
+                            ESP_LOGI(TWAI_TAG, "Data: %s", incomingDataParameters);
+                            xSemaphoreGive(doneSem);
+                        }
+                        else if(rxMessage.identifier == ID_MASTER_DONE)
+                        {
+                            ESP_LOGI(TWAI_TAG, "Data Completed");
+                            ESP_LOGI(TWAI_TAG, "Data: %s", incomingDataParameters);
+                            xSemaphoreGive(ctrlSem);
+                            break;
+                        }
+                    }
+                }
             }
         }
         vTaskDelete(NULL);
@@ -118,6 +143,21 @@ public:
                         vTaskDelay(500 / portTICK_PERIOD_MS);
                     }
                 }
+                    
+                else if(parameters.taskType == 1)
+                {
+                    ESP_LOGI(TWAI_TAG, "Sending data request");
+                    twai_message_t dataMessage = {.identifier = parameters.expectedIdentifier, .data_length_code = 0, .data = {0, 0, 0, 0, 0, 0, 0, 0}};
+                    while (xSemaphoreTake(doneSem, 0) != pdTRUE)
+                    {
+                        esp_err_t error = twai_transmit(&dataMessage, portMAX_DELAY);
+                        if(error != 0)
+                        {
+                            ESP_LOGE(TWAI_TAG, "Error sending data request: %d", error);
+                        }
+                        vTaskDelay(500 / portTICK_PERIOD_MS);
+                    }
+                }
             }
         }
         vTaskDelete(NULL);
@@ -141,6 +181,15 @@ public:
             xQueueSend(rxTaskQueue, &parameters, portMAX_DELAY);
 
             xSemaphoreTake(ctrlSem, portMAX_DELAY);
+            ESP_LOGI(TWAI_TAG, "Requesting Data");
+            parameters.expectedIdentifier = ID_MASTER_REQUEST;
+            parameters.taskType = 1;
+            xQueueSend(txTaskQueue, &parameters, portMAX_DELAY);
+            parameters.expectedIdentifier = ID_REQUEST_RESP;
+            parameters.taskType = 1;
+            xQueueSend(rxTaskQueue, &parameters, portMAX_DELAY);
+
+            xSemaphoreTake(ctrlSem, portMAX_DELAY);
             vTaskDelay(3000 / portTICK_PERIOD_MS);
         }
         endTWAI();
@@ -152,6 +201,8 @@ private:
         uint32_t expectedIdentifier;
         uint8_t taskType;
     } TWAITaskParameters;
+
+    char incomingDataParameters[300];
 
     gpio_num_t txTWAI;
     gpio_num_t rxTWAI;
