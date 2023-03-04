@@ -72,13 +72,20 @@ public:
         ESP_ERROR_CHECK(twai_start());
         while (1)
         {
+            memset(&rxMessage, 0, sizeof(twai_message_t));
+            twai_receive(&rxMessage, portMAX_DELAY);
+            ESP_LOGI(TWAI_TAG, "Received message with identifier: 0x%08x", rxMessage.identifier);
+            if(rxMessage.data_length_code != 0)
+            {
+                for(int i = 0; i < rxMessage.data_length_code; i++)
+                    printf("0x%02x ", rxMessage.data[i]);
+                printf("\n");
+            }
             if(identifierHeader == 0x00)
             {
                 vTaskDelay(500 / portTICK_PERIOD_MS);
                 continue;
             }
-            memset(&rxMessage, 0, sizeof(twai_message_t));
-            twai_receive(&rxMessage, portMAX_DELAY);
             if (rxMessage.identifier == (ID_MASTER_PING | identifierHeader))
             {
                 ESP_LOGI(TWAI_TAG, "Received master ping");

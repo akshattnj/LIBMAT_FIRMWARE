@@ -114,6 +114,22 @@ public:
                         }
                     }
                 }
+
+                else if(parameters.taskType == 2)
+                {
+                    while(1) 
+                    {
+                        memset(&rxMessage, 0, sizeof(twai_message_t));
+                        twai_receive(&rxMessage, portMAX_DELAY);
+                        if(rxMessage.identifier == parameters.expectedIdentifier)
+                        {
+                            ESP_LOGI(TWAI_TAG, "Data Confirmation Received");
+                            xSemaphoreGive(ctrlSem);
+                            xSemaphoreGive(doneSem);
+                            break;
+                        }
+                    }
+                }
             }
         }
         vTaskDelete(NULL);
@@ -158,6 +174,20 @@ public:
                         vTaskDelay(500 / portTICK_PERIOD_MS);
                     }
                 }
+                else if(parameters.taskType == 2)
+                {
+                    ESP_LOGI(TWAI_TAG, "Sending data");
+                    twai_message_t dataMessage = {.identifier = parameters.expectedIdentifier, .data_length_code = 8, .data = {0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88}};
+                    while (xSemaphoreTake(doneSem, 0) != pdTRUE)
+                    {
+                        esp_err_t error = twai_transmit(&dataMessage, portMAX_DELAY);
+                        if(error != 0)
+                        {
+                            ESP_LOGE(TWAI_TAG, "Error sending data: %d", error);
+                        }
+                        vTaskDelay(500 / portTICK_PERIOD_MS);
+                    }
+                }
             }
         }
         vTaskDelete(NULL);
@@ -187,6 +217,15 @@ public:
             xQueueSend(txTaskQueue, &parameters, portMAX_DELAY);
             parameters.expectedIdentifier = ID_REQUEST_RESP;
             parameters.taskType = 1;
+            xQueueSend(rxTaskQueue, &parameters, portMAX_DELAY);
+
+            xSemaphoreTake(ctrlSem, portMAX_DELAY);
+            ESP_LOGI(TWAI_TAG, "TWAI Send Data");
+            parameters.expectedIdentifier = ID_MASTER_DATA;
+            parameters.taskType = 2;
+            xQueueSend(txTaskQueue, &parameters, portMAX_DELAY);
+            parameters.expectedIdentifier = ID_DATA_RESP;
+            parameters.taskType = 2;
             xQueueSend(rxTaskQueue, &parameters, portMAX_DELAY);
 
             xSemaphoreTake(ctrlSem, portMAX_DELAY);
