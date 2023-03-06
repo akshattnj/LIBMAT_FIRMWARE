@@ -6,6 +6,7 @@
 #define ESP_WIFI_PASS      "HUB_1_TEST"
 #define ESP_WIFI_CHANNEL   1
 #define MAX_STA_CONN       10
+#define MAX_SOCKETS        7
 
 #define BLE_TAG "NimBLE"
 #define MAIN_TAG "Main"
