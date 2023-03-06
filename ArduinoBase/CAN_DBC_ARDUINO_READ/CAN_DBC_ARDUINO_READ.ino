@@ -1,85 +1,112 @@
-#include <CAN.h>
+#include <ESP32CAN.h>
+#include <CAN_config.h>
 #include <cJSON.h>
 
-// DBC message definitions
-#define VOLTAGE_INFO_MSG_ID 2566848976
-#define BATTERY_STATE_MSG_ID 2566850000
-
-// CAN bus settings
-#define CAN_SPEED CAN_SPEED_500KBPS
+// Define CAN bus pins
 #define CAN_TX_PIN GPIO_NUM_5
 #define CAN_RX_PIN GPIO_NUM_4
 
+// Define DBC message IDs
+#define VOLTAGE_INFO_MSG_ID 2566848976
+#define BATTERY_STATE_MSG_ID 2566850000
+
+// Define DBC signals
+#define BATTERY_VOLTAGE_SIGNAL 7
+#define MIN_VOLTAGE_SIGNAL 39
+#define MAX_VOLTAGE_SIGNAL 55
+#define EQUIVALENT_CYCLE_SIGNAL 39
+#define STATE_OF_HEALTH_SIGNAL 23
+#define STATE_OF_CHARGE_SIGNAL 7
+
+// Declare CAN bus object
+CAN_device_t CAN_cfg;
+
+// Declare cJSON objects
+cJSON *root, *data, *battery_voltage, *min_voltage, *max_voltage, *equivalent_cycle, *state_of_health, *state_of_charge;
+
 void setup() {
+  // Start serial communication
   Serial.begin(115200);
-
+  
   // Initialize CAN bus
-  if (!CAN.begin(CAN_SPEED, CAN_TX_PIN, CAN_RX_PIN)) {
-    Serial.println("Failed to initialize CAN bus");
-    while (1) {}
-  }
-
-  // Set filter to receive only messages with the defined IDs
-  CAN.filterExtended(VOLTAGE_INFO_MSG_ID, 0xFFFFFFFF);
-  CAN.filterExtended(BATTERY_STATE_MSG_ID, 0xFFFFFFFF);
+  CAN_cfg.speed = CAN_SPEED_500KBPS;
+  CAN_cfg.tx_pin_id = CAN_TX_PIN;
+  CAN_cfg.rx_pin_id = CAN_RX_PIN;
+  CAN_cfg.rx_queue = xQueueCreate(10, sizeof(CAN_frame_t));
+  CAN_init();
+  
+  // Initialize cJSON objects
+  root = cJSON_CreateObject();
+  data = cJSON_CreateObject();
+  battery_voltage = cJSON_CreateNumber(0);
+  min_voltage = cJSON_CreateNumber(0);
+  max_voltage = cJSON_CreateNumber(0);
+  equivalent_cycle = cJSON_CreateNumber(0);
+  state_of_health = cJSON_CreateNumber(0);
+  state_of_charge = cJSON_CreateNumber(0);
 }
 
 void loop() {
-  // Check if there is a new CAN message
-  if (CAN.available()) {
-    // Read the message
-    CANMessage msg;
-    CAN.read(msg);
-
-    // Check the message ID to determine which DBC message it belongs to
-    if (msg.id == VOLTAGE_INFO_MSG_ID) {
-      // Parse the message using cJSON
-      cJSON *root = cJSON_Parse(msg.data);
-
-      // Check if parsing was successful
-      if (root != NULL) {
-        // Get the values of the signals
-        double battery_voltage = cJSON_GetObjectItem(root, "Battery_Voltage")->valuedouble;
-        double min_voltage = cJSON_GetObjectItem(root, "Min_Voltage")->valuedouble;
-        double max_voltage = cJSON_GetObjectItem(root, "Max_Voltage")->valuedouble;
-
-        // Print the values
-        Serial.print("Battery voltage: ");
-        Serial.println(battery_voltage);
-        Serial.print("Minimum voltage: ");
-        Serial.println(min_voltage);
-        Serial.print("Maximum voltage: ");
-        Serial.println(max_voltage);
-
-        // Free the cJSON object
-        cJSON_Delete(root);
-      } else {
-        Serial.println("Failed to parse message");
-      }
-    } else if (msg.id == BATTERY_STATE_MSG_ID) {
-      // Parse the message using cJSON
-      cJSON *root = cJSON_Parse(msg.data);
-
-      // Check if parsing was successful
-      if (root != NULL) {
-        // Get the values of the signals
-        double equivalent_cycle = cJSON_GetObjectItem(root, "Equivalent_Cycle")->valuedouble;
-        int state_of_health = cJSON_GetObjectItem(root, "State_of_Health")->valueint;
-        int state_of_charge = cJSON_GetObjectItem(root, "State_of_Charge")->valueint;
-
-        // Print the values
-        Serial.print("Equivalent cycle: ");
-        Serial.println(equivalent_cycle);
-        Serial.print("State of health: ");
-        Serial.println(state_of_health);
-        Serial.print("State of charge: ");
-        Serial.println(state_of_charge);
-
-        // Free the cJSON object
-        cJSON_Delete(root);
-      } else {
-        Serial.println("Failed to parse message");
-      }
+  // Wait for CAN message to be received
+    CAN_frame_t rx_frame;
+  if(xQueueReceive(CAN_cfg.rx_queue, &rx_frame, 3*portTICK_PERIOD_MS) == pdTRUE) {
+    // Check if message is a Voltage Info message
+    if(rx_frame.MsgID == VOLTAGE_INFO_MSG_ID) {
+      // Extract signal values from message data
+      float battery_voltage_value, min_voltage_value, max_voltage_value;
+      memcpy(&battery_voltage_value, &rx_frame.data + 3, 4);
+      memcpy(&min_voltage_value, &rx_frame.data + 4, 2);
+      memcpy(&max_voltage_value, &rx_frame.data + 6, 2);
+      
+      // Convert signal values to engineering units
+      battery_voltage_value *= 0.001;
+      min_voltage_value *= 0.001;
+      max_voltage_value *= 0.001;
+      
+      // Update cJSON objects with signal values
+      cJSON_SetNumberValue(battery_voltage, battery_voltage_value);
+      cJSON_SetNumberValue(min_voltage, min_voltage_value);
+      cJSON_SetNumberValue(max_voltage, max_voltage_value);
+      
+      // Add cJSON objects to root object
+      cJSON_AddItemToObject(data, "Battery Voltage", battery_voltage);
+      cJSON_AddItemToObject(data, "Min Voltage", min_voltage);
+      cJSON_AddItemToObject(data, "Max Voltage", max_voltage);
+      cJSON_AddItemToObject(root, "Voltage Info", data);
     }
-  }
+    // Check if message is a Battery State message
+    else if(rx_frame.MsgID == BATTERY_STATE_MSG_ID) {
+      // Extract signal values from message data
+      uint32_t equivalent_cycle_value;
+      uint16_t state_of_health_value, state_of_charge_value;
+      memcpy(&equivalent_cycle_value, &rx_frame.data + 4, 4);
+      memcpy(&state_of_health_value, &rx_frame.data + 2, 2);
+      memcpy(&state_of_charge_value, &rx_frame.data, 2);
+  
+  // Convert signal values to engineering units
+  equivalent_cycle_value *= 1;
+  state_of_health_value *= 0.01;
+  state_of_charge_value *= 0.01;
+  
+  // Update cJSON objects with signal values
+//  cJSON_SetNumberValue(equivalent_cycle, equivalent_cycle_value);
+//  cJSON_SetNumberValue(state_of_health, state_of_health_value);
+  cJSON_SetNumberValue(state_of_charge, state_of_charge_value);
+  
+  // Add cJSON objects to root object
+//  cJSON_AddItemToObject(data, "Equivalent Cycle", equivalent_cycle);
+//  cJSON_AddItemToObject(data, "State of Health", state_of_health);
+  cJSON_AddItemToObject(data, "State of Charge", state_of_charge);
+  cJSON_AddItemToObject(root, "Battery State", data);
 }
+
+// Print JSON object to serial monitor
+char *json_str = cJSON_Print(root);
+Serial.println(json_str);
+free(json_str);
+
+// Delete cJSON objects and reset root object
+cJSON_Delete(root);
+root = cJSON_CreateObject();
+data = cJSON_CreateObject(); 
+  }}
