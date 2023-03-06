@@ -16,23 +16,23 @@ extern "C" void app_main(void)
     while (1)
     {
         ledHandler.setBatteryPercentage(100);
-        vTaskDelay(1000 / portTICK_PERIOD_MS);
+        vTaskDelay(4000 / portTICK_PERIOD_MS);
         ledHandler.setBatteryPercentage(50);
-        vTaskDelay(1000 / portTICK_PERIOD_MS);
+        vTaskDelay(4000 / portTICK_PERIOD_MS);
         ledHandler.setBatteryPercentage(25);
-        vTaskDelay(1000 / portTICK_PERIOD_MS);
+        vTaskDelay(4000 / portTICK_PERIOD_MS);
         ledHandler.setBatteryPercentage(0);
-        vTaskDelay(1000 / portTICK_PERIOD_MS);
+        vTaskDelay(4000 / portTICK_PERIOD_MS);
 
         ledHandler.setAnimationSelection(1);
         ledHandler.setBatteryPercentage(100);
-        vTaskDelay(1000 / portTICK_PERIOD_MS);
+        vTaskDelay(4000 / portTICK_PERIOD_MS);
         ledHandler.setBatteryPercentage(50);
-        vTaskDelay(1000 / portTICK_PERIOD_MS);
+        vTaskDelay(4000 / portTICK_PERIOD_MS);
         ledHandler.setBatteryPercentage(25);
-        vTaskDelay(1000 / portTICK_PERIOD_MS);
+        vTaskDelay(4000 / portTICK_PERIOD_MS);
         ledHandler.setBatteryPercentage(0);
-        vTaskDelay(1000 / portTICK_PERIOD_MS);
+        vTaskDelay(4000 / portTICK_PERIOD_MS);
 
         ledHandler.setAnimationSelection(2);
         vTaskDelay(4000 / portTICK_PERIOD_MS);
