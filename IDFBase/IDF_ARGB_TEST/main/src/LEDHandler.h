@@ -54,6 +54,7 @@ public:
             ESP_LOGE("LEDHandler", "install WS2812 driver failed");
         }
         ESP_ERROR_CHECK(strip->clear(strip, 1000));
+        startupAnimation();
     }
 
     /**
@@ -122,6 +123,10 @@ public:
         {
             setPixel(i, red, green, 0);
         }
+        for(int i = ledsToFill; i < NEOPIXEL_NUM; i++)
+        {
+            setPixel(i, 0, 0, 0);
+        }
         ESP_ERROR_CHECK(strip->refresh(strip, 100)); 
     }
 
@@ -137,11 +142,15 @@ public:
         }
         if (lastBlink)
         {
-            setPixel(NEOPIXEL_NUM - 1, 0, 0, 0);
+            setPixel(ledsToFill - 1, 0, 0, 0);
         }
         else
         {
-            setPixel(NEOPIXEL_NUM - 1, red, green, 0);
+            setPixel(ledsToFill - 1, red, green, 0);
+        }
+        for(int i = ledsToFill; i < NEOPIXEL_NUM; i++)
+        {
+            setPixel(i, 0, 0, 0);
         }
         ESP_ERROR_CHECK(strip->refresh(strip, 100));
     }
