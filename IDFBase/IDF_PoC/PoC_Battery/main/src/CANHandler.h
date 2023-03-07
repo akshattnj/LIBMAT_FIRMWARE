@@ -16,7 +16,6 @@ namespace CANHandler
 
     void taskReceiveTWAI(void *params);
     void taskSendTWAI(void *params);
-    void taskControlTWAI(void *params);
 }
 
 

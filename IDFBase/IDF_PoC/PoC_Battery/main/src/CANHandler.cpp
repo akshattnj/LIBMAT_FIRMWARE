@@ -6,8 +6,10 @@ namespace CANHandler
     QueueHandle_t rxTaskQueue;
     SemaphoreHandle_t doneSem;
 
-    gpio_num_t txTWAI = GPIO_NUM_26;
-    gpio_num_t rxTWAI = GPIO_NUM_27;
+    gpio_num_t txTWAI = GPIO_NUM_18;
+    gpio_num_t rxTWAI = GPIO_NUM_19;
+
+    uint32_t identifierHeader = 0x0B0;
 
     typedef struct TWAITaskParameters{
         uint32_t expectedIdentifier;
@@ -41,27 +43,32 @@ namespace CANHandler
 
     void taskReceiveTWAI(void *params)
     {
-        twai_message_t rxMessage;
         TWAITaskParameters parameters;
+        twai_message_t rxMessage;
+        ESP_ERROR_CHECK(twai_start());
         while (1)
         {
-            if (xQueueReceive(rxTaskQueue, &parameters, portMAX_DELAY) == pdTRUE)
+            memset(&rxMessage, 0, sizeof(twai_message_t));
+            twai_receive(&rxMessage, portMAX_DELAY);
+            ESP_LOGI(TWAI_TAG, "Received message with identifier: 0x%08x", rxMessage.identifier);
+            if(rxMessage.data_length_code != 0)
             {
-                if (parameters.taskType == 0)
-                {
-                    while (1)
-                    {
-                        ESP_LOGI(TWAI_TAG, "Waiting for ping response");
-                        memset(&rxMessage, 0, sizeof(twai_message_t));
-                        twai_receive(&rxMessage, portMAX_DELAY);
-                        if (rxMessage.identifier == parameters.expectedIdentifier)
-                        {
-                            xSemaphoreGive(doneSem);
-                            xSemaphoreGive(Commons::semaphoreCAN);
-                            break;
-                        }
-                    }
-                }
+                for(int i = 0; i < rxMessage.data_length_code; i++)
+                    printf("0x%02x ", rxMessage.data[i]);
+                printf("\n");
+            }
+            if(identifierHeader == 0x00)
+            {
+                vTaskDelay(500 / portTICK_PERIOD_MS);
+                continue;
+            }
+            if (rxMessage.identifier == (ID_MASTER_PING | identifierHeader))
+            {
+                ESP_LOGI(TWAI_TAG, "Received master ping");
+                parameters.expectedIdentifier = ID_PING_RESP;
+                parameters.taskType = 0;
+                xQueueSend(txTaskQueue, &parameters, portMAX_DELAY);
+                continue;
             }
         }
         vTaskDelete(NULL);

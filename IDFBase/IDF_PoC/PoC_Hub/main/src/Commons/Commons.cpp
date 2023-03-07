@@ -4,7 +4,7 @@ namespace Commons
 {
     uint8_t WiFiFlags = 0;
     uint8_t WSFlags = 0;
-    bool activeDoor = false;
+    bool activeDoor = true;
 
     SemaphoreHandle_t semaphoreCAN = xSemaphoreCreateBinary();
     QueueHandle_t queueCAN = xQueueCreate(1, sizeof(uint8_t));

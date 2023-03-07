@@ -18,6 +18,7 @@
 #define WS_TAG "Websocket Client"
 #define I2C_TAG "I2C"
 #define MQTT_TAG "MQTT"
+#define TWAI_TAG "TWAI"
 
 // BLE Definations
 #define BLE_DEVICE_NAME "ESP_COM_4"

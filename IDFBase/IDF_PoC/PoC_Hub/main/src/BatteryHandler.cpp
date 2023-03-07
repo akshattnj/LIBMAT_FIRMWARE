@@ -41,8 +41,10 @@ namespace BatteryHandler
         {
             uint8_t command = 0x01;
             setGPIO(doors[0], 1);
+            ESP_LOGI(GPIO_TAG, "Opening door 1");
             xQueueSend(Commons::queueCAN, &command, 0);
             xSemaphoreTake(Commons::semaphoreCAN, portMAX_DELAY);
+            ESP_LOGI(GPIO_TAG, "Battery Inserted");
             setGPIO(doors[0], 0);
             while(1)
             {
@@ -53,8 +55,10 @@ namespace BatteryHandler
                 vTaskDelay(5 / portTICK_PERIOD_MS);
             }
             setGPIO(chargers[0], 1);
+            ESP_LOGI(GPIO_TAG, "Charging started");
             
             setGPIO(chargers[1], 0);
+            ESP_LOGI(GPIO_TAG, "Door 2 opened");
             setGPIO(doors[1], 1);
             vTaskDelay(2500 / portTICK_PERIOD_MS);
             setGPIO(doors[1], 0);
@@ -67,6 +71,7 @@ namespace BatteryHandler
                 vTaskDelay(5 / portTICK_PERIOD_MS);
             }
             Commons::activeDoor = !Commons::activeDoor;
+            ESP_LOGI(GPIO_TAG, "Door 2 closed");
         }
         else
         {
