@@ -44,9 +44,9 @@ namespace Commons
         
         esp_http_client_handle_t client = esp_http_client_init(&postConfig);
 
-        char  *post_data = "{oldDeviceId: \"d9b1f7f0\", \"newDeviceId\": \"21d930c0\", \"customerId\": 2}";
-        esp_http_client_set_post_field(client, post_data, strlen(post_data));
+        char  *post_data = "{\"oldDeviceId\": \"d9b1f7f0\", \"newDeviceId\": \"21d930c0\", \"customerId\": 2}";
         esp_http_client_set_header(client, "Content-Type", "application/json");
+        esp_http_client_set_post_field(client, post_data, strlen(post_data));
 
         esp_http_client_perform(client);
         esp_http_client_cleanup(client);

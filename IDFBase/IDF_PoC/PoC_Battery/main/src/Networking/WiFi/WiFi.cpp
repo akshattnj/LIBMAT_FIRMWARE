@@ -108,6 +108,13 @@ namespace WiFi
         ESP_ERROR_CHECK(esp_wifi_disconnect());
     }
 
+    void stopWiFi()
+    {
+        ESP_ERROR_CHECK(esp_wifi_disconnect());
+        Commons::WiFiFlags = BIT2;
+        ESP_ERROR_CHECK(esp_wifi_stop());
+    }
+
     int8_t compareKnownAPs(char *ssid, uint8_t bssid[6])
     {
         for (int i = 0; i < knownAPCount; i++)

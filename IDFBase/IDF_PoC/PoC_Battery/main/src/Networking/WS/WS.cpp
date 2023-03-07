@@ -49,10 +49,14 @@ namespace WS
             }
             else
             {
-                ESP_LOGW(WS_TAG, "Received=%.*s", data->data_len, (char *)data->data_ptr);
+                ESP_LOGI(WS_TAG, "Received=%.*s", data->data_len, (char *)data->data_ptr);
                 if (strncmp("DATA", data->data_ptr, 4) == 0)
                 {
                     sendWSMessage((char *)message, strlen(message));
+                }
+                else if(strncmp("DONE", data->data_ptr, 4) == 0)
+                {
+                    ESP_LOGI(WS_TAG, "Swapping Completed");
                 }
             }
             ESP_LOGW(WS_TAG, "Total payload length=%d, data_len=%d, current payload offset=%d\r\n", data->payload_len, data->data_len, data->payload_offset);
@@ -72,6 +76,7 @@ namespace WS
             esp_websocket_client_close(client, portMAX_DELAY);
         ESP_LOGI(WS_TAG, "Websocket Stopped");
         esp_websocket_client_destroy(client);
+        WiFi::stopWiFi();
     }
 
     /**

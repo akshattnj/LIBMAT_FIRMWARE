@@ -3,6 +3,7 @@
 
 #include "../../definations.h"
 #include "../../Commons/Commons.h"
+#include "../WiFi/WiFi.h"
 
 extern "C"
 {
