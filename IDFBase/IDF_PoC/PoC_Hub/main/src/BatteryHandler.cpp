@@ -20,6 +20,8 @@ namespace BatteryHandler
         io_conf.pin_bit_mask = GPIO_SEL_32 | GPIO_SEL_33;
         io_conf.pull_down_en = GPIO_PULLDOWN_ENABLE;
         gpio_config(&io_conf);
+
+        setGPIO(chargers[1], 1);
     }
 
 

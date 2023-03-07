@@ -13,8 +13,8 @@ extern "C"
 namespace BatteryHandler
 {
     void init();
-    void setGPIO(uint8_t pin, uint8_t value);
-    bool getGPIO(uint8_t pin);
+    void setGPIO(gpio_num_t pin, uint8_t value);
+    bool getGPIO(gpio_num_t pin);
     void handleDoor();
 }
 #endif

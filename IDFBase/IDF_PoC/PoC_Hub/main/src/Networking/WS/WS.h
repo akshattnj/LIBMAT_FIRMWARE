@@ -3,6 +3,7 @@
 
 #include "../../definations.h"
 #include "../../Commons/Commons.h"
+#include "../../BatteryHandler.h"
 
 extern "C"
 {

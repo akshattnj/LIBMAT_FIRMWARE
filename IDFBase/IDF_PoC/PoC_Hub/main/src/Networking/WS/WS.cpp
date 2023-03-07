@@ -55,7 +55,10 @@ namespace WS
             if (xQueueReceive(swapQueue, &client, portMAX_DELAY))
             {
                 ESP_LOGI(SERV_TAG, "Got data from queue");
+                strncpy(client.message, "SWAP", 5);
+                client.messageLen = 5;
                 addToWsAsyncQueue(client, client.fileDescriptor, client.message, client.messageLen, false);
+                BatteryHandler::handleDoor();
                 addToWsAsyncQueue(client, client.fileDescriptor, client.message, client.messageLen, true);
                 httpd_sess_trigger_close(client.handler, client.fileDescriptor);
             }
