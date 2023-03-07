@@ -61,6 +61,7 @@ namespace WS
                 BatteryHandler::handleDoor();
                 addToWsAsyncQueue(client, client.fileDescriptor, client.message, client.messageLen, true);
                 httpd_sess_trigger_close(client.handler, client.fileDescriptor);
+                Commons::sendPostMessage();
             }
         }
     }

@@ -18,6 +18,7 @@ extern "C"
 #include <nvs_flash.h>
 #include <esp_event.h>
 #include <esp_log.h>
+#include <esp_http_client.h>
 }
 
 namespace Commons 
@@ -30,6 +31,7 @@ namespace Commons
     extern QueueHandle_t queueCAN;
 
     void startNVS();
+    void sendPostMessage();
 }
 
 
