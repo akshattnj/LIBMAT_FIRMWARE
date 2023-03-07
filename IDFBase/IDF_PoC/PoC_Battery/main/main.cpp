@@ -4,6 +4,7 @@
 #include "src/Networking/WS/WS.h"
 #include "src/CANHandler.h"
 #include "src/Networking/MQTT/MQTT.h"
+#include "src/LEDHandler.h"
 
 extern "C" void app_main(void)
 {
@@ -13,6 +14,9 @@ extern "C" void app_main(void)
     WiFi::setNetCred();
     MQTT::mqttSetup();
     MQTT::connectMQTT();
+    LED::init();
+
+    Commons::batteryPercentage = 35;
 
     xTaskCreate(WiFi::taskWiFiConnect, "Wifi Connect", 4096, NULL, 10, NULL);
     xTaskCreate(WiFi::taskAutoConnect, "Auto Connect", 4096, NULL, 10, NULL);
@@ -20,4 +24,5 @@ extern "C" void app_main(void)
     xTaskCreate(CANHandler::taskReceiveTWAI, "CAN Receive", 4096, NULL, 10, NULL);
     xTaskCreate(CANHandler::taskSendTWAI, "CAN Send", 4096, NULL, 10, NULL);
     xTaskCreate(MQTT::mqttPublishTelemetry, "MQTT Publish", 4096, NULL, 10, NULL);
+    xTaskCreate(LED::ledAnimationTask, "LED Animation", 4096, NULL, 10, NULL);
 }

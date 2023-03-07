@@ -4,6 +4,8 @@ namespace Commons
 {
     uint8_t WiFiFlags = 0;
     uint8_t wsFlags = 0;
+    uint8_t batteryPercentage = 0;
+    uint8_t animationSelection = 0xFF;
 
     SemaphoreHandle_t semaphoreCAN = xSemaphoreCreateBinary();
     QueueHandle_t queueCAN = xQueueCreate(1, sizeof(uint8_t));

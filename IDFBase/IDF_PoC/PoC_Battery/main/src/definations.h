@@ -23,14 +23,8 @@
 #define MQTT_TAG "MQTT"
 #define TWAI_TAG "TWAI"
 
-// BLE Definations
-#define BLE_DEVICE_NAME "ESP_COM_4"
-#define GATT_SVR_SVC_ALERT_UUID               0x1811
-#define GATT_SVR_CHR_SUP_NEW_ALERT_CAT_UUID   0x2A47
-#define GATT_SVR_CHR_NEW_ALERT                0x2A46
-#define GATT_SVR_CHR_SUP_UNR_ALERT_CAT_UUID   0x2A48
-#define GATT_SVR_CHR_UNR_ALERT_STAT_UUID      0x2A45
-#define GATT_SVR_CHR_ALERT_NOT_CTRL_PT        0x2A44
+#define NEOPIXEL_PIN 16
+#define NEOPIXEL_NUM 5
 
 #define ID_MASTER_PING      0x0B0
 #define ID_MASTER_REQUEST   0x0B1

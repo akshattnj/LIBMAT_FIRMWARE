@@ -54,9 +54,15 @@ namespace WS
                 {
                     sendWSMessage((char *)message, strlen(message));
                 }
+                if (strncmp("SWAP", data->data_ptr, 4) == 0)
+                {
+                    ESP_LOGI(WS_TAG, "SWAP animation");
+                    Commons::animationSelection = 2;
+                }
                 else if(strncmp("DONE", data->data_ptr, 4) == 0)
                 {
-                    ESP_LOGI(WS_TAG, "Swapping Completed");
+                    ESP_LOGI(WS_TAG, "Charge animation");
+                    Commons::animationSelection = 1;
                 }
             }
             ESP_LOGW(WS_TAG, "Total payload length=%d, data_len=%d, current payload offset=%d\r\n", data->payload_len, data->data_len, data->payload_offset);
