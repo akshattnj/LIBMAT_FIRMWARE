@@ -87,17 +87,11 @@ namespace WiFi
         ESP_LOGI(WIFI_TAG, "WiFi initial setup complete");
     }
 
-    void setNetCred(char *ssid, char *password)
+    void setNetCred()
     {
-        char netSSID[20];
-        char netPASS[20];
-        memset(netSSID, 0, sizeof(netSSID));
-        memset(netPASS, 0, sizeof(netPASS));
-        strncpy(netSSID, ssid, strlen(ssid));
-        strncpy(netPASS, password, strlen(password));
-        backupNetAP.ssid = netSSID;
-        backupNetAP.password = netPASS;
-        ESP_LOGI(WIFI_TAG, "%s %s %s %s", ssid, password, backupNetAP.ssid, backupNetAP.password);
+        backupNetAP.ssid = SSID;
+        backupNetAP.password = PASSWORD;
+        ESP_LOGI(WIFI_TAG, "%s %s", backupNetAP.ssid, backupNetAP.password);
         Commons::WiFiFlags = Commons::WiFiFlags | BIT2 | BIT3;
         esp_wifi_scan_stop();
         xQueueSend(WiFiConnectQueue, (void *)&(backupNetAP), 0);
@@ -150,7 +144,7 @@ namespace WiFi
                     if (apNum > -1)
                     {
                         xQueueSend(WiFiConnectQueue, (void *)&(knownAPs[i]), 0);
-                        Commons::WiFiFlags = Commons::WiFiFlags | BIT2;
+                        Commons::WiFiFlags = (Commons::WiFiFlags | BIT2) & (~BIT3);
                         break;
                     }
                     ESP_LOGD(WIFI_TAG, "SSID \t\t%s", apInfo[i].ssid);
@@ -178,6 +172,7 @@ namespace WiFi
                 if ((Commons::WiFiFlags & BIT1) > 0)
                 {
                     ESP_ERROR_CHECK(esp_wifi_disconnect());
+                    vTaskDelay(1000 / portTICK_PERIOD_MS);
                     Commons::WiFiFlags = Commons::WiFiFlags & (~BIT1);
                 }
                 // reconfigure wifi
@@ -187,7 +182,8 @@ namespace WiFi
                 strcpy((char *)wifiStaConfig.sta.password, apInfo.password);
                 wifiStaConfig.sta.threshold.authmode = WIFI_AUTH_WPA2_PSK;
                 ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &wifiStaConfig));
-                Commons::WiFiFlags = Commons::WiFiFlags | BIT0;
+                Commons::WiFiFlags = Commons::WiFiFlags | BIT0 | BIT2;
+                esp_wifi_scan_stop();
                 ESP_LOGI(WIFI_TAG, "Connecting to Wifi SSID: %s, Password: %s", wifiStaConfig.sta.ssid, wifiStaConfig.sta.password);
                 ESP_ERROR_CHECK(esp_wifi_connect());
             }

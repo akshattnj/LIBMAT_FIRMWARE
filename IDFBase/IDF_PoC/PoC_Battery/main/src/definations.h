@@ -8,9 +8,12 @@
 #define WS_URI "ws://192.168.4.1/main"
 
 // MQTT Related stuff
-#define DEVICE_ID "20ec6300-b54f-11ed-9d5b-213ae9a75e81"
-#define DEVICE_ACCESS_ID "cfb62967-c874-486b"
+#define DEVICE_ID "21d930c0-baf1-11ed-b4d9-13b68cb12c7e"
+#define DEVICE_ACCESS_ID "IFWSi8vM1HWhJFWtVLCn"
 #define MQTT_URI "mqtt://3.111.8.114:1883"
+
+#define SSID "ZOLO~JAZZ"
+#define PASSWORD "Z@0J@zZ$"
 
 #define BLE_TAG "NimBLE"
 #define MAIN_TAG "Main"

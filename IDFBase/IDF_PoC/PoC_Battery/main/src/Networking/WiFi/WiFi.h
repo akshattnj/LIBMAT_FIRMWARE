@@ -15,7 +15,7 @@ namespace WiFi
     void disconnectWiFi();
     void taskAutoConnect(void *args);
     void taskWiFiConnect(void *args);
-    void setNetCred(char *ssid, char *password);
+    void setNetCred();
     void stopWiFi();
 }
 
