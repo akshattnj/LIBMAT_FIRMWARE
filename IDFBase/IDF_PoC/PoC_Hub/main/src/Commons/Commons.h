@@ -2,6 +2,7 @@
 #define COMMONS_H
 
 #include "../definations.h"
+#include "../BatteryHandler.h"
 #include <string.h>
 
 extern "C"
@@ -23,6 +24,10 @@ namespace Commons
 {
     extern uint8_t WiFiFlags;
     extern uint8_t WSFlags;
+    extern bool activeDoor;
+
+    extern SemaphoreHandle_t semaphoreCAN;
+    extern QueueHandle_t queueCAN;
 
     void startNVS();
 }
