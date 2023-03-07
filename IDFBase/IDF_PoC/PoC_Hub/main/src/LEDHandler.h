@@ -13,13 +13,13 @@ extern "C"
 namespace LED
 {
     void setPixel(uint8_t pixelNum, uint32_t red, uint32_t green, uint32_t blue);
-    void clear();
+    void clear(uint8_t slot);
     void init();
     void ledAnimationTask(void *pvParameter);
     void startupAnimation();
-    void normalAnimation(uint8_t batteryPercentage);
-    void chargingAnimation(uint8_t batteryPercentage, bool lastBlink);
-    void swappingAnimation(bool blink);
+    void normalAnimation(uint8_t batteryPercentage, uint8_t slot);
+    void chargingAnimation(uint8_t batteryPercentage, bool lastBlink, uint8_t slot);
+    void swappingAnimation(bool blink, uint8_t slot);
 }
 
 #endif

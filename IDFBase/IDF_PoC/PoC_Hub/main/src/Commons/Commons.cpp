@@ -5,6 +5,8 @@ namespace Commons
     uint8_t WiFiFlags = 0;
     uint8_t WSFlags = 0;
     bool activeDoor = true;
+    uint8_t batteryPercentage[4] = {35, 60, 100, 40};
+    uint8_t animationSelection[4] = {0xFF, 0xFF, 0xFF, 0xFF};
 
     SemaphoreHandle_t semaphoreCAN = xSemaphoreCreateBinary();
     QueueHandle_t queueCAN = xQueueCreate(1, sizeof(uint8_t));

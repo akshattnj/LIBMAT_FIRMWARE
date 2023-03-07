@@ -26,6 +26,8 @@ namespace Commons
     extern uint8_t WiFiFlags;
     extern uint8_t WSFlags;
     extern bool activeDoor;
+    extern uint8_t batteryPercentage[4];
+    extern uint8_t animationSelection[4];
 
     extern SemaphoreHandle_t semaphoreCAN;
     extern QueueHandle_t queueCAN;

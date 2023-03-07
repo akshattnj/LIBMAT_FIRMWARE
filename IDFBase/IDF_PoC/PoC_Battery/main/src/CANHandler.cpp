@@ -6,8 +6,8 @@ namespace CANHandler
     QueueHandle_t rxTaskQueue;
     SemaphoreHandle_t doneSem;
 
-    gpio_num_t txTWAI = GPIO_NUM_18;
-    gpio_num_t rxTWAI = GPIO_NUM_19;
+    gpio_num_t txTWAI = GPIO_NUM_26;
+    gpio_num_t rxTWAI = GPIO_NUM_27;
 
     uint32_t identifierHeader = 0x0B0;
 

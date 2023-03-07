@@ -25,6 +25,9 @@
 #define ID_REQUEST_RESP   0x0A1
 #define ID_DATA_RESP      0x0A3
 
+#define NEOPIXEL_PIN 15
+#define NEOPIXEL_NUM 28
+
 
 
 #endif

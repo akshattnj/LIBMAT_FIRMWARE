@@ -9,9 +9,12 @@ namespace LED
         ESP_ERROR_CHECK(strip->set_pixel(strip, pixelNum, red, green, blue));
     }
 
-    void clear()
+    void clear(uint8_t slot)
     {
-        ESP_ERROR_CHECK(strip->clear(strip, 1000));
+        for (int i = (7 * slot); i < (7 * slot) + 7; i++)
+        {
+            setPixel(i, 0, 0, 0);
+        }
     }
 
     void init()
@@ -34,84 +37,105 @@ namespace LED
     {
         while (true)
         {
-            switch (Commons::animationSelection)
+            for (int i = 0; i < 4; i++)
             {
-            case 0:
-                normalAnimation(Commons::batteryPercentage);
-                vTaskDelay(1000 / portTICK_PERIOD_MS);
-                break;
-            case 1:
-                chargingAnimation(Commons::batteryPercentage, false);
-                vTaskDelay(1000 / portTICK_PERIOD_MS);
-                chargingAnimation(Commons::batteryPercentage, true);
-                vTaskDelay(1000 / portTICK_PERIOD_MS);
-                break;
-            case 2:
-                swappingAnimation(false);
-                vTaskDelay(1000 / portTICK_PERIOD_MS);
-                swappingAnimation(true);
-                vTaskDelay(1000 / portTICK_PERIOD_MS);
-                break;
-            default:
-                vTaskDelay(100 / portTICK_PERIOD_MS);
-                break;
+                switch (Commons::animationSelection[i])
+                {
+                case 0:
+                    normalAnimation(Commons::batteryPercentage[i], i);
+                    vTaskDelay(1000 / portTICK_PERIOD_MS);
+                    break;
+                case 1:
+                    chargingAnimation(Commons::batteryPercentage[i], false, i);
+                    vTaskDelay(1000 / portTICK_PERIOD_MS);
+                    chargingAnimation(Commons::batteryPercentage[i], true, i);
+                    vTaskDelay(1000 / portTICK_PERIOD_MS);
+                    break;
+                case 2:
+                    swappingAnimation(false, i);
+                    vTaskDelay(1000 / portTICK_PERIOD_MS);
+                    swappingAnimation(true, i);
+                    vTaskDelay(1000 / portTICK_PERIOD_MS);
+                    break;
+                default:
+                    vTaskDelay(100 / portTICK_PERIOD_MS);
+                    break;
+                }
             }
         }
     }
 
-    void normalAnimation(uint8_t batteryPercentage)
+    void startupAnimation()
     {
-        uint8_t green = (uint8_t)((float)batteryPercentage * 2.55);
-        uint8_t red = 255 - green;
-        uint8_t ledsToFill = (uint8_t)((float)batteryPercentage * 0.01 * NEOPIXEL_NUM);
-        for (int i = 0; i < ledsToFill; i++)
+        for (int i = 0; i < 10; i++)
         {
-            setPixel(i, red, green, 0);
+            normalAnimation(i * 10, 0);
+            normalAnimation(i * 10, 1);
+            normalAnimation(i * 10, 2);
+            normalAnimation(i * 10, 3);
+            vTaskDelay(100 / portTICK_PERIOD_MS);
         }
-        for(int i = ledsToFill; i < NEOPIXEL_NUM; i++)
-        {
-            setPixel(i, 0, 0, 0);
-        }
-        ESP_ERROR_CHECK(strip->refresh(strip, 100)); 
+        vTaskDelay(1000 / portTICK_PERIOD_MS);
+        Commons::animationSelection[0] = 0xFF;
+        Commons::animationSelection[1] = 0x01;
+        Commons::animationSelection[2] = 0x01;
+        Commons::animationSelection[3] = 0x01;
     }
 
-    void chargingAnimation(uint8_t batteryPercentage, bool lastBlink)
+    void normalAnimation(uint8_t batteryPercentage, uint8_t slot)
     {
         uint8_t green = (uint8_t)((float)batteryPercentage * 2.55);
         uint8_t red = 255 - green;
-        uint8_t ledsToFill = (uint8_t)((float)batteryPercentage * 0.01 * NEOPIXEL_NUM);
-        if(ledsToFill == 0) ledsToFill = 1;
-        for (int i = 0; i < ledsToFill - 1; i++)
+        uint8_t ledsToFill = (uint8_t)((float)batteryPercentage * 0.01 * 7);
+        for (int i = 7 * slot; i < (7 * slot) + ledsToFill; i++)
         {
             setPixel(i, red, green, 0);
         }
-        if (lastBlink)
-        {
-            setPixel(ledsToFill - 1, 0, 0, 0);
-        }
-        else
-        {
-            setPixel(ledsToFill - 1, red, green, 0);
-        }
-        for(int i = ledsToFill; i < NEOPIXEL_NUM; i++)
+        for (int i = (7 * slot) + ledsToFill; i < (7 * slot) + 7; i++)
         {
             setPixel(i, 0, 0, 0);
         }
         ESP_ERROR_CHECK(strip->refresh(strip, 100));
     }
 
-    void swappingAnimation(bool blink)
+    void chargingAnimation(uint8_t batteryPercentage, bool lastBlink, uint8_t slot)
+    {
+        uint8_t green = (uint8_t)((float)batteryPercentage * 2.55);
+        uint8_t red = 255 - green;
+        uint8_t ledsToFill = (uint8_t)((float)batteryPercentage * 0.01 * 7);
+        if (ledsToFill == 0)
+            ledsToFill = 1;
+        for (int i = 7 * slot; i < (7 * slot) + ledsToFill; i++)
+        {
+            setPixel(i, red, green, 0);
+        }
+        if (lastBlink)
+        {
+            setPixel((7 * slot) + ledsToFill - 1, 0, 0, 0);
+        }
+        else
+        {
+            setPixel((7 * slot) + ledsToFill - 1, red, green, 0);
+        }
+        for (int i = (7 * slot) + ledsToFill; i < (7 * slot) + 7; i++)
+        {
+            setPixel(i, 0, 0, 0);
+        }
+        ESP_ERROR_CHECK(strip->refresh(strip, 100));
+    }
+
+    void swappingAnimation(bool blink, uint8_t slot)
     {
         if (blink)
         {
-            for (int i = 0; i < NEOPIXEL_NUM; i++)
+            for (int i = (7 * slot); i < (7 * slot) + 7; i++)
             {
                 setPixel(i, 0, 0, 0);
             }
         }
         else
         {
-            for (int i = 0; i < NEOPIXEL_NUM; i++)
+            for (int i = (7 * slot); i < (7 * slot) + 7; i++)
             {
                 setPixel(i, 0, 0, 255);
             }

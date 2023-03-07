@@ -12,8 +12,8 @@
 #define DEVICE_ACCESS_ID "IFWSi8vM1HWhJFWtVLCn"
 #define MQTT_URI "mqtt://3.111.8.114:1883"
 
-#define SSID "ZOLO~JAZZ"
-#define PASSWORD "Z@0J@zZ$"
+#define SSID "Movio_Mobility"
+#define PASSWORD "movio@12334"
 
 #define BLE_TAG "NimBLE"
 #define MAIN_TAG "Main"
