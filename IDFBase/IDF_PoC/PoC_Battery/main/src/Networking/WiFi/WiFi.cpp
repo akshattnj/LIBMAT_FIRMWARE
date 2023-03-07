@@ -114,11 +114,12 @@ namespace WiFi
         {
             if (strncmp(knownAPs->ssid, ssid, strlen(knownAPs->ssid)) == 0)
             {
-                if (memcmp(knownAPs->bssid, bssid, 6) == 0)
-                {
-                    ESP_LOGI(WIFI_TAG, "Known AP found");
-                    return i;
-                }
+                return i;
+                // if (memcmp(knownAPs->bssid, bssid, 6) == 0)
+                // {
+                //     ESP_LOGI(WIFI_TAG, "Known AP found");
+                //     return i;
+                // }
             }
         }
         return -1;

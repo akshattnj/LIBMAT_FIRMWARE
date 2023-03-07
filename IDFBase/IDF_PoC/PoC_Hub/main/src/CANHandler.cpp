@@ -99,7 +99,8 @@ namespace CANHandler
         TWAITaskParameters parameters;
         while (1)
         {
-            if(xQueueReceive(Commons::queueCAN, NULL, portMAX_DELAY) == pdTRUE)
+            uint8_t data;
+            if(xQueueReceive(Commons::queueCAN, &data, portMAX_DELAY) == pdTRUE)
             {
                 ESP_LOGI(TWAI_TAG, "Starting TWAI communication");
                 parameters.expectedIdentifier = ID_MASTER_PING;

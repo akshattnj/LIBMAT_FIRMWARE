@@ -2,188 +2,115 @@
 
 namespace WS
 {
-    cJSON *json = NULL;
-    ClientDetails clientDetails;
-    QueueHandle_t swapQueue = xQueueCreate(7, sizeof(ClientDetails));
+    esp_websocket_client_handle_t client;
+    const char* message = "DATA{\"id\":\"asdf\",\"aid\":\"1234\",\"cid\":2}}";
 
-    static void sendMessageToClient(void *args)
+    void startWSClient(void)
     {
-        ClientDetails client = *(ClientDetails *)args;
-        httpd_ws_frame_t wsPacket;
-        memset(&wsPacket, 0, sizeof(httpd_ws_frame_t));
-        uint8_t *buffer = (uint8_t *)calloc(1, client.messageLen + 5);
-        size_t len = sprintf((char *)buffer, "%s", (char *)client.message);
-        wsPacket.payload = buffer;
-        wsPacket.len = len;
-        wsPacket.type = HTTPD_WS_TYPE_TEXT;
-        httpd_ws_send_frame_async(client.handler, client.fileDescriptor, &wsPacket);
-        free(buffer);
-    }
-
-    /**
-     * Sends a Web Socket disconnect message to a specified client
-     */
-    static void sendDisconnect(void *args)
-    {
-        ClientDetails client = *(ClientDetails *)args;
-        httpd_ws_frame_t wsPacket;
-        memset(&wsPacket, 0, sizeof(httpd_ws_frame_t));
-        wsPacket.payload = NULL;
-        wsPacket.len = 0;
-        wsPacket.type = HTTPD_WS_TYPE_CLOSE;
-        httpd_ws_send_frame_async(client.handler, client.fileDescriptor, &wsPacket);
-    }
-
-
-    static esp_err_t addToWsAsyncQueue(ClientDetails client, int fileDescriptor, char *data, size_t messageLen, bool disconnect)
-    {
-        if(disconnect)
-        {
-            httpd_queue_work(client.handler, sendDisconnect, &client);
-        }
-        ESP_LOGI(SERV_TAG, "Queuing job for fd: %d", client.fileDescriptor);
-        httpd_queue_work(client.handler, sendMessageToClient, &client);
-        return ESP_OK;
-    }
-
-
-    void queueHandlerTask(void *pvParameters)
-    {
-        ClientDetails client;
+        esp_websocket_client_config_t websocket_cfg = {};
+        websocket_cfg.uri = WS_URI;
+        ESP_LOGI(WS_TAG, "Connecting to %s...", websocket_cfg.uri);
+        client = esp_websocket_client_init(&websocket_cfg);
+        esp_websocket_register_events(client, WEBSOCKET_EVENT_ANY, wsEventHandler, (void *)client);
+        esp_websocket_client_start(client);
         while (1)
         {
-            if (xQueueReceive(swapQueue, &client, portMAX_DELAY))
+            char data[10];
+            sprintf(data, "CONNECT");
+            if (esp_websocket_client_is_connected(client))
             {
-                ESP_LOGI(SERV_TAG, "Got data from queue");
-                strncpy(client.message, "SWAP", 5);
-                client.messageLen = 5;
-                addToWsAsyncQueue(client, client.fileDescriptor, client.message, client.messageLen, false);
-                BatteryHandler::handleDoor();
-                addToWsAsyncQueue(client, client.fileDescriptor, client.message, client.messageLen, true);
-                httpd_sess_trigger_close(client.handler, client.fileDescriptor);
-                Commons::sendPostMessage();
+                ESP_LOGI(WS_TAG, "Sending %s", data);
+                esp_websocket_client_send_text(client, data, 7, portMAX_DELAY);
+                break;
             }
+            vTaskDelay(100 / portTICK_PERIOD_MS);
+        }
+    }
+
+    void wsEventHandler(void *handler_args, esp_event_base_t base, int32_t event_id, void *event_data)
+    {
+        esp_websocket_event_data_t *data = (esp_websocket_event_data_t *)event_data;
+        switch (event_id)
+        {
+        case WEBSOCKET_EVENT_CONNECTED:
+            ESP_LOGI(WS_TAG, "WEBSOCKET_EVENT_CONNECTED");
+            break;
+        case WEBSOCKET_EVENT_DISCONNECTED:
+            ESP_LOGI(WS_TAG, "WEBSOCKET_EVENT_DISCONNECTED");
+            Commons::wsFlags = Commons::wsFlags | BIT1;
+            break;
+        case WEBSOCKET_EVENT_DATA:
+            ESP_LOGI(WS_TAG, "WEBSOCKET_EVENT_DATA");
+            ESP_LOGI(WS_TAG, "Received opcode=%d", data->op_code);
+            if (data->op_code == 0x08 && data->data_len == 2)
+            {
+                ESP_LOGW(WS_TAG, "Received closed message with code=%d", 256 * data->data_ptr[0] + data->data_ptr[1]);
+                Commons::wsFlags = Commons::wsFlags | BIT1;
+            }
+            else
+            {
+                ESP_LOGW(WS_TAG, "Received=%.*s", data->data_len, (char *)data->data_ptr);
+                if (strncmp("DATA", data->data_ptr, 4) == 0)
+                {
+                    sendWSMessage((char *)message, strlen(message));
+                }
+            }
+            ESP_LOGW(WS_TAG, "Total payload length=%d, data_len=%d, current payload offset=%d\r\n", data->payload_len, data->data_len, data->payload_offset);
+            break;
+        case WEBSOCKET_EVENT_ERROR:
+            ESP_LOGI(WS_TAG, "WEBSOCKET_EVENT_ERROR");
+            break;
         }
     }
 
     /**
-     * Handler for incoming websocket requests
-     *  @param req Pointer to incoming request (httpd_req_t)
+     * Disconnect the websocket client
      */
-    static esp_err_t requestHandler(httpd_req_t *req)
+    void destroyWSClient(void)
     {
-        // Response on first connect
-        if (req->method == HTTP_GET)
-        {
-            ESP_LOGI(SERV_TAG, "Handshake done, the new connection was opened");
-            return ESP_OK;
-        }
-
-        // Get incoming packet length
-        httpd_ws_frame_t wsPacket;
-        memset(&wsPacket, 0, sizeof(httpd_ws_frame_t));
-        wsPacket.type = HTTPD_WS_TYPE_TEXT;
-        esp_err_t ret = httpd_ws_recv_frame(req, &wsPacket, 0);
-        if (ret != ESP_OK)
-        {
-            ESP_LOGE(SERV_TAG, "Issue with getting frame length");
-            return ret;
-        }
-        ESP_LOGI(SERV_TAG, "Got frame length %d", wsPacket.len);
-
-        // Validate packet
-        if (wsPacket.len > 200 || wsPacket.len <= 0)
-        {
-            ESP_LOGE(SERV_TAG, "Invalid message length");
-            return ESP_FAIL;
-        }
-
-        // Get packet contents
-        uint8_t *buffer = (uint8_t *)calloc(1, wsPacket.len + 1);
-        wsPacket.payload = buffer;
-        ret = httpd_ws_recv_frame(req, &wsPacket, wsPacket.len);
-        if (ret != ESP_OK)
-        {
-            ESP_LOGE(SERV_TAG, "Something went wrong with getting data frame");
-            return ret;
-        }
-        ESP_LOGI(SERV_TAG, "Got Data: %s", wsPacket.payload);
-
-        // Process packet contents
-        if ((strncmp("CONNECT", (char *)wsPacket.payload, 7) == 0))
-        {
-            free(buffer);
-            buffer = (uint8_t *)calloc(1, 20);
-            wsPacket.payload = buffer;
-            
-            sprintf((char *)wsPacket.payload, "DATA");
-            wsPacket.len = 6;
-            ret = httpd_ws_send_frame(req, &wsPacket);
-            goto finish;
-        }
-
-        if((strncmp("DATA", (char *)wsPacket.payload, 4) == 0))
-        {
-            memcpy(wsPacket.payload, wsPacket.payload + 4, wsPacket.len - 4);
-            json = cJSON_Parse((char *)wsPacket.payload);
-            if (json == NULL)
-            {
-                const char *error_ptr = cJSON_GetErrorPtr();
-                if (error_ptr != NULL)
-                {
-                    ESP_LOGE(SERV_TAG, "Error before: %s", error_ptr);
-                }
-                goto finish;
-            }
-            strncpy(clientDetails.clientId, cJSON_GetStringValue(cJSON_GetObjectItemCaseSensitive(json, "id")), strlen(cJSON_GetStringValue(cJSON_GetObjectItemCaseSensitive(json, "id"))));
-            strncpy(clientDetails.clientAccessId, cJSON_GetStringValue(cJSON_GetObjectItemCaseSensitive(json, "aid")), strlen(cJSON_GetStringValue(cJSON_GetObjectItemCaseSensitive(json, "aid"))));
-            clientDetails.customerId = (uint8_t)cJSON_GetNumberValue(cJSON_GetObjectItemCaseSensitive(json, "cid"));
-            clientDetails.handler = req->handle;
-            clientDetails.fileDescriptor = httpd_req_to_sockfd(req);
-            xQueueSend(swapQueue, &clientDetails, portMAX_DELAY);
-            cJSON_Delete(json);
-            goto finish;
-        }
-
-        // Track all connections that responded with OK and mark as alive
-        if (strncmp("OK", (char *)wsPacket.payload, 2) == 0)
-        {
-            goto finish;
-        }
-
-        sprintf((char *)wsPacket.payload, "INVALID");
-        wsPacket.len = 7;
-        ret = httpd_ws_send_frame(req, &wsPacket);
-
-    finish:
-        // Clean up
-        free(buffer);
-        return ret;
+        if (esp_websocket_client_is_connected(client))
+            esp_websocket_client_close(client, portMAX_DELAY);
+        ESP_LOGI(WS_TAG, "Websocket Stopped");
+        esp_websocket_client_destroy(client);
     }
 
-    static const httpd_uri_t mainURI = {
-        .uri = "/main",
-        .method = HTTP_GET,
-        .handler = requestHandler,
-        .user_ctx = NULL,
-        .is_websocket = true
-    };
-    
-    httpd_handle_t startWebserver(void)
+    /**
+     * Send a message to Websocket server
+     * @param data Data to be sent
+     * @param dataLen Length of data to be sent
+     */
+    void sendWSMessage(char *data, size_t dataLen)
     {
-        httpd_handle_t server = NULL;
-        httpd_config_t config = HTTPD_DEFAULT_CONFIG();
-        config.max_open_sockets = MAX_SOCKETS;
-
-        ESP_LOGI(SERV_TAG, "Starting server on port: '%d'", config.server_port);
-        if (httpd_start(&server, &config) == ESP_OK)
+        while (1)
         {
-            ESP_LOGI(SERV_TAG, "Registering URI handlers");
-            httpd_register_uri_handler(server, &mainURI);
-            return server;
+            if (esp_websocket_client_is_connected(client))
+            {
+                char toTransmit[dataLen + 5];
+                sprintf(toTransmit, "%s", data);
+                ESP_LOGI(WS_TAG, "Sending %s", toTransmit);
+                esp_websocket_client_send_text(client, toTransmit, dataLen, portMAX_DELAY);
+                break;
+            }
+            vTaskDelay(100 / portTICK_PERIOD_MS);
         }
+    }
 
-        ESP_LOGI(SERV_TAG, "Error starting server!");
-        return NULL;
+    void wsClientTask(void *args)
+    {
+        while (1)
+        {
+            if ((Commons::wsFlags & BIT0) > 0)
+            {
+                Commons::wsFlags = Commons::wsFlags & (~BIT0);
+
+                startWSClient();
+            }
+            if ((Commons::wsFlags & BIT1) > 0)
+            {
+                Commons::wsFlags = Commons::wsFlags & (~BIT1);
+                destroyWSClient();
+            }
+            vTaskDelay(100 / portTICK_PERIOD_MS);
+        }
     }
 }

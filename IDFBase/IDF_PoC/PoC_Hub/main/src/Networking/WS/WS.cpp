@@ -52,7 +52,7 @@ namespace WS
         ClientDetails client;
         while (1)
         {
-            if (xQueueReceive(swapQueue, &client, portMAX_DELAY))
+            if (xQueueReceive(swapQueue, &client, portMAX_DELAY) == pdTRUE)
             {
                 ESP_LOGI(SERV_TAG, "Got data from queue");
                 strncpy(client.message, "SWAP", 5);

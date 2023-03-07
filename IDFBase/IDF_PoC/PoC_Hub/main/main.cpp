@@ -16,8 +16,7 @@ extern "C" void app_main(void)
     WiFi::initialiseWiFiSoftAP();
     WiFi::connectToWiFi("ZOLO~JAZZ", "Z@0J@zZ$");
     WS::startWebserver();
-
-
+    CANHandler::startTWAI();
 
     xTaskCreate(WS::queueHandlerTask, "Queue handler", 4096, NULL, 10, NULL);
     xTaskCreate(CANHandler::taskReceiveTWAI, "CAN receive", 4096, NULL, 10, NULL);

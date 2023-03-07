@@ -15,10 +15,9 @@
 #define BLE_TAG "NimBLE"
 #define MAIN_TAG "Main"
 #define WIFI_TAG "WiFi"
-#define SERV_TAG "Server"
-#define GPIO_TAG "GPIO"
-#define TWAI_TAG "TWAI"
-#define CAN_TAG "CAN"
+#define WS_TAG "Websocket Client"
+#define I2C_TAG "I2C"
+#define MQTT_TAG "MQTT"
 
 // BLE Definations
 #define BLE_DEVICE_NAME "ESP_COM_4"

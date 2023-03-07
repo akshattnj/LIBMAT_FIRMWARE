@@ -6,30 +6,32 @@
 
 extern "C"
 {
-    #include <esp_netif.h>
-    #include <esp_http_server.h>
+    #include <esp_websocket_client.h>
 }
 
 namespace WS
 {
-    void queueHandlerTask(void *pvParameters);
-    httpd_handle_t startWebserver(void);
+    void wsEventHandler(void *handler_args, esp_event_base_t base, int32_t event_id, void *event_data);
 
-    extern QueueHandle_t swapQueue;
+    /**
+     * @brief Send Data to Websocket Server
+    */
+    void sendWSMessage(char *data, size_t dataLen);
 
-    class ClientDetails
-    {
-    public:
-        char clientId[9];
-        char clientAccessId[21];
-        uint8_t clientCanId;
-        uint8_t customerId;
-        uint8_t clientSlot;
-        httpd_handle_t handler;
-        int fileDescriptor;
-        char message[20];
-        size_t messageLen;
-    };
+    /**
+     * @brief Start Websocket Client
+    */
+    void startWSClient(void);
+
+    /**
+     * @brief Destroy Websocket Client
+    */
+    void destroyWSClient(void);
+
+    /**
+     * @brief Websocket connection control task
+    */
+    void wsClientTask(void *args);
 }
 
 #endif
