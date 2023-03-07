@@ -58,6 +58,7 @@ namespace LED
                     vTaskDelay(1000 / portTICK_PERIOD_MS);
                     break;
                 default:
+                    clear(i);
                     vTaskDelay(100 / portTICK_PERIOD_MS);
                     break;
                 }

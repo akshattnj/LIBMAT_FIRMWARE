@@ -39,6 +39,7 @@ namespace BatteryHandler
     {
         if (Commons::activeDoor)
         {
+            Commons::animationSelection[0] = 2;
             uint8_t command = 0x01;
             setGPIO(doors[0], 1);
             ESP_LOGI(GPIO_TAG, "Opening door 1");
@@ -56,7 +57,9 @@ namespace BatteryHandler
             }
             setGPIO(chargers[0], 1);
             ESP_LOGI(GPIO_TAG, "Charging started");
-            
+            Commons::animationSelection[0] = 1;
+
+            Commons::animationSelection[2] = 2;
             setGPIO(chargers[1], 0);
             ESP_LOGI(GPIO_TAG, "Door 2 opened");
             setGPIO(doors[1], 1);
@@ -72,37 +75,7 @@ namespace BatteryHandler
             }
             Commons::activeDoor = !Commons::activeDoor;
             ESP_LOGI(GPIO_TAG, "Door 2 closed");
-        }
-        else
-        {
-            setGPIO(doors[1], 1);
-            vTaskDelay(2500 / portTICK_PERIOD_MS);
-            setGPIO(doors[1], 0);
-            while(1)
-            {
-                if (getGPIO(sensors[1]) == 1)
-                {
-                    break;
-                }
-                vTaskDelay(5 / portTICK_PERIOD_MS);
-            }
-            setGPIO(chargers[1], 1);
-
-            uint8_t command = 0x02;
-            setGPIO(chargers[0], 0);
-            setGPIO(doors[0], 1);
-            xQueueSend(Commons::queueCAN, &command, 0);
-            xSemaphoreTake(Commons::semaphoreCAN, portMAX_DELAY);
-            setGPIO(doors[0], 0);
-            while(1)
-            {
-                if (getGPIO(sensors[0]) == 1)
-                {
-                    break;
-                }
-                vTaskDelay(5 / portTICK_PERIOD_MS);
-            }
-            Commons::activeDoor = !Commons::activeDoor;
+            Commons::animationSelection[2] = 0xFF;
         }
     }
 }
