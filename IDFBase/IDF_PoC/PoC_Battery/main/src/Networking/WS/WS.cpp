@@ -59,9 +59,6 @@ namespace WS
                 client.messageLen = 5;
                 addToWsAsyncQueue(client, client.fileDescriptor, client.message, client.messageLen, false);
                 BatteryHandler::handleDoor();
-                strncpy(client.message, "DONE", 5);
-                client.messageLen = 5;
-                addToWsAsyncQueue(client, client.fileDescriptor, client.message, client.messageLen, false);
                 addToWsAsyncQueue(client, client.fileDescriptor, client.message, client.messageLen, true);
                 httpd_sess_trigger_close(client.handler, client.fileDescriptor);
                 Commons::sendPostMessage();
