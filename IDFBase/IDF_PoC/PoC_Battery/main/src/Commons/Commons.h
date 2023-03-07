@@ -22,11 +22,13 @@ extern "C"
 
 namespace Commons 
 {
-    extern uint8_t WiFiFlags;
-    extern uint8_t WSFlags;
+    extern uint8_t WiFiFlags; // {BIT0 - Connect flag, BIT1 - connected flag, BIT2 - Stop scan, BIT3 - Net WiFi}
+    extern uint8_t wsFlags;
+
+    extern SemaphoreHandle_t semaphoreCAN;
+    extern QueueHandle_t queueCAN;
 
     void startNVS();
-    void sendPostMessage();
 }
 
 

@@ -11,9 +11,11 @@ extern "C"
 
 namespace WiFi
 {
-    void initialiseWiFiSoftAP();
-    void connectToWiFi(char *SSID, char *password);
+    void initialiseWiFiSTA();
     void disconnectWiFi();
+    void taskAutoConnect(void *args);
+    void taskWiFiConnect(void *args);
+    void setNetCred(char *ssid, char *password);
 }
 
 #endif

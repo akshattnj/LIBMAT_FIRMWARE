@@ -2,21 +2,29 @@
 
 namespace WiFi
 {
-    uint8_t retryCount = 0;
-
-    void wifiEventHandler(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data)
+    typedef struct APData
     {
-        if (event_id == WIFI_EVENT_AP_STACONNECTED)
+        char *ssid;
+        char *password;
+        uint8_t bssid[6];
+    } APData;
+
+    APData knownAPs[2] = {
+        {.ssid = "HUB_1",
+         .password = "HUB_1_TEST",
+         .bssid = {112, 184, 246, 149, 77, 133}},
         {
-            wifi_event_ap_staconnected_t *event = (wifi_event_ap_staconnected_t *)event_data;
-            ESP_LOGI(WIFI_TAG, "station " MACSTR " join, AID=%d", MAC2STR(event->mac), event->aid);
-        }
-        else if (event_id == WIFI_EVENT_AP_STADISCONNECTED)
-        {
-            wifi_event_ap_stadisconnected_t *event = (wifi_event_ap_stadisconnected_t *)event_data;
-            ESP_LOGI(WIFI_TAG, "station " MACSTR " leave, AID=%d", MAC2STR(event->mac), event->aid);
-        }
-        else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED)
+            0,
+        }};
+
+    APData backupNetAP = {0};
+    const uint8_t knownAPCount = 1;
+    uint8_t retryCount = 0;
+    QueueHandle_t WiFiConnectQueue;
+
+    static void wifiEventHandler(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data)
+    {
+        if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED)
         {
             Commons::WiFiFlags = Commons::WiFiFlags & (~BIT1);
             if (Commons::WiFiFlags & BIT0)
@@ -31,11 +39,13 @@ namespace WiFi
                     Commons::WiFiFlags = Commons::WiFiFlags & (~BIT0);
                     retryCount = 0;
                     ESP_LOGE(WIFI_TAG, "Retry count exceeded");
+                    Commons::WiFiFlags = Commons::WiFiFlags & (~BIT2);
                 }
             }
             else
             {
                 ESP_LOGE(WIFI_TAG, "WiFi connection lost");
+                Commons::WiFiFlags = Commons::WiFiFlags & (~BIT2);
             }
         }
         else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP)
@@ -43,20 +53,23 @@ namespace WiFi
             ip_event_got_ip_t *event = (ip_event_got_ip_t *)event_data;
             ESP_LOGI(WIFI_TAG, "Got IP:" IPSTR, IP2STR(&event->ip_info.ip));
             Commons::WiFiFlags = (Commons::WiFiFlags | BIT1) & (~BIT0);
+            if ((Commons::WiFiFlags & BIT3) > 0)
+            {
+                Commons::WiFiFlags = (Commons::WiFiFlags) & (~BIT2);
+            }
+            else
+            {
+                Commons::WiFiFlags = (Commons::WiFiFlags | BIT2) & (~BIT3);
+                Commons::wsFlags = BIT0;
+            }
             retryCount = 0;
         }
     }
 
-    void initialiseWiFiSoftAP()
+    void initialiseWiFiSTA()
     {
         ESP_ERROR_CHECK(esp_netif_init());
         ESP_ERROR_CHECK(esp_event_loop_create_default());
-
-        esp_netif_t *p_netif = esp_netif_create_default_wifi_ap();
-        assert(p_netif);
-        esp_netif_ip_info_t if_info;
-        ESP_ERROR_CHECK(esp_netif_get_ip_info(p_netif, &if_info));
-        ESP_LOGI(WIFI_TAG, "ESP32 IP:" IPSTR, IP2STR(&if_info.ip));
 
         esp_netif_t *sta_netif = esp_netif_create_default_wifi_sta();
         assert(sta_netif);
@@ -67,37 +80,110 @@ namespace WiFi
         ESP_ERROR_CHECK(esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &wifiEventHandler, NULL));
         ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP, &wifiEventHandler, NULL));
 
-        wifi_config_t wifiConfig = {0};
-        strncpy((char *)wifiConfig.ap.ssid, ESP_WIFI_SSID, strlen(ESP_WIFI_SSID) + 1);
-        strncpy((char *)wifiConfig.ap.password, ESP_WIFI_PASS, strlen(ESP_WIFI_PASS) + 1);
-        wifiConfig.ap.ssid_len = strlen(ESP_WIFI_SSID);
-        wifiConfig.ap.channel = ESP_WIFI_CHANNEL;
-        wifiConfig.ap.max_connection = MAX_STA_CONN;
-        wifiConfig.ap.authmode = WIFI_AUTH_WPA_WPA2_PSK;
-
-        ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_APSTA));
-        ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_AP, &wifiConfig));
+        ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
         ESP_ERROR_CHECK(esp_wifi_start());
+        WiFiConnectQueue = xQueueCreate(2, sizeof(struct APData));
+
+        ESP_LOGI(WIFI_TAG, "WiFi initial setup complete");
     }
 
-    void connectToWiFi(char *SSID, char *password)
+    void setNetCred(char *ssid, char *password)
     {
-        ESP_LOGI(WIFI_TAG, "Connecting to Wifi SSID: %s, Password: %s", SSID, password);
-        // reconfigure wifi
-        wifi_config_t wifiStaConfig = {0};
-        memset(&wifiStaConfig, 0, sizeof(wifiStaConfig));
-        strcpy((char *)wifiStaConfig.sta.ssid, SSID);
-        strcpy((char *)wifiStaConfig.sta.password, password);
-        wifiStaConfig.sta.scan_method = WIFI_ALL_CHANNEL_SCAN;
-        ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &wifiStaConfig));
-        ESP_LOGI(WIFI_TAG, "Connecting to Wifi SSID: %s, Password: %s", wifiStaConfig.sta.ssid, wifiStaConfig.sta.password);
-        Commons::WiFiFlags = Commons::WiFiFlags | BIT0;
-        ESP_ERROR_CHECK(esp_wifi_connect());
+        char netSSID[20];
+        char netPASS[20];
+        memset(netSSID, 0, sizeof(netSSID));
+        memset(netPASS, 0, sizeof(netPASS));
+        strncpy(netSSID, ssid, strlen(ssid));
+        strncpy(netPASS, password, strlen(password));
+        backupNetAP.ssid = netSSID;
+        backupNetAP.password = netPASS;
+        ESP_LOGI(WIFI_TAG, "%s %s %s %s", ssid, password, backupNetAP.ssid, backupNetAP.password);
+        Commons::WiFiFlags = Commons::WiFiFlags | BIT2 | BIT3;
+        esp_wifi_scan_stop();
+        xQueueSend(WiFiConnectQueue, (void *)&(backupNetAP), 0);
     }
 
     void disconnectWiFi()
     {
-        Commons::WiFiFlags = Commons::WiFiFlags & (~BIT0);
         ESP_ERROR_CHECK(esp_wifi_disconnect());
+    }
+
+    int8_t compareKnownAPs(char *ssid, uint8_t bssid[6])
+    {
+        for (int i = 0; i < knownAPCount; i++)
+        {
+            if (strncmp(knownAPs->ssid, ssid, strlen(knownAPs->ssid)) == 0)
+            {
+                if (memcmp(knownAPs->bssid, bssid, 6) == 0)
+                {
+                    ESP_LOGI(WIFI_TAG, "Known AP found");
+                    return i;
+                }
+            }
+        }
+        return -1;
+    }
+
+    void taskAutoConnect(void *args)
+    {
+        while (1)
+        {
+            if ((Commons::WiFiFlags & BIT2) == 0)
+            {
+                wifi_ap_record_t apInfo[MAX_WIFI_LIST_SIZE];
+                uint16_t apCount = MAX_WIFI_LIST_SIZE;
+                memset(apInfo, 0, sizeof(apInfo));
+                ESP_ERROR_CHECK(esp_wifi_scan_start(NULL, true));
+                ESP_ERROR_CHECK(esp_wifi_scan_get_ap_records(&apCount, apInfo));
+                ESP_LOGI(WIFI_TAG, "Total APs scanned = %u", apCount);
+                for (int i = 0; (i < MAX_WIFI_LIST_SIZE) && (i < apCount); i++)
+                {
+                    int8_t apNum = compareKnownAPs((char *)apInfo[i].ssid, apInfo[i].bssid);
+                    if (apNum > -1)
+                    {
+                        xQueueSend(WiFiConnectQueue, (void *)&(knownAPs[i]), 0);
+                        Commons::WiFiFlags = Commons::WiFiFlags | BIT2;
+                        break;
+                    }
+                    ESP_LOGD(WIFI_TAG, "SSID \t\t%s", apInfo[i].ssid);
+                    ESP_LOGD(WIFI_TAG, "RSSI \t\t%d", apInfo[i].rssi);
+                    ESP_LOGD(WIFI_TAG, "Channel \t\t%d", apInfo[i].primary);
+                    ESP_LOGD(WIFI_TAG, "BSSID \t\t%d:%d:%d:%d:%d:%d\n", apInfo[i].bssid[0], apInfo[i].bssid[1], apInfo[i].bssid[2], apInfo[i].bssid[3], apInfo[i].bssid[4], apInfo[i].bssid[5]);
+                }
+                ESP_ERROR_CHECK(esp_wifi_scan_stop());
+            }
+            vTaskDelay(1000 / portTICK_PERIOD_MS);
+        }
+    }
+
+    void taskWiFiConnect(void *args)
+    {
+        struct APData apInfo;
+
+        while (1)
+        {
+            if (xQueueReceive(WiFiConnectQueue, &apInfo, 0) == pdTRUE)
+            {
+                ESP_LOGI(WIFI_TAG, "Connecting to Wifi SSID: %s, Password: %s", apInfo.ssid, apInfo.password);
+                if(apInfo.ssid == NULL)
+                    continue;
+                if ((Commons::WiFiFlags & BIT1) > 0)
+                {
+                    ESP_ERROR_CHECK(esp_wifi_disconnect());
+                    Commons::WiFiFlags = Commons::WiFiFlags & (~BIT1);
+                }
+                // reconfigure wifi
+                wifi_config_t wifiStaConfig = {0};
+                memset(&wifiStaConfig, 0, sizeof(wifiStaConfig));
+                strcpy((char *)wifiStaConfig.sta.ssid, apInfo.ssid);
+                strcpy((char *)wifiStaConfig.sta.password, apInfo.password);
+                wifiStaConfig.sta.threshold.authmode = WIFI_AUTH_WPA2_PSK;
+                ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &wifiStaConfig));
+                Commons::WiFiFlags = Commons::WiFiFlags | BIT0;
+                ESP_LOGI(WIFI_TAG, "Connecting to Wifi SSID: %s, Password: %s", wifiStaConfig.sta.ssid, wifiStaConfig.sta.password);
+                ESP_ERROR_CHECK(esp_wifi_connect());
+            }
+            vTaskDelay(1);
+        }   
     }
 }
