@@ -1,7 +1,9 @@
 #ifndef GPIO_HANDLER_H
 #define GPIO_HANDLER_H
 
-namespace GPIO
+#include "CANHandler.h"
+
+namespace HUB
 {
     
 }

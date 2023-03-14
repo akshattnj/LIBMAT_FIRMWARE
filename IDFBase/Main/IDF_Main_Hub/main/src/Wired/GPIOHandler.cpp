@@ -40,7 +40,7 @@
 
 #include "GPIOHandler.h"
 
-namespace GPIO
+namespace HUB
 {
 
 }
