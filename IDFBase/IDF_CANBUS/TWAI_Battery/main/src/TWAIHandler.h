@@ -65,54 +65,61 @@ public:
     /**
      * @brief Task to receive TWAI messages
      */
-    void taskReceiveTWAI(void *params)
+void taskReceiveTWAI(void *params)
+{
+    TWAITaskParameters parameters;
+    twai_message_t rxMessage;
+    ESP_ERROR_CHECK(twai_start());
+    while (1)
     {
-        TWAITaskParameters parameters;
-        twai_message_t rxMessage;
-        ESP_ERROR_CHECK(twai_start());
-        while (1)
+        memset(&rxMessage, 0, sizeof(twai_message_t));
+        twai_receive(&rxMessage, portMAX_DELAY);
+        ESP_LOGI(TWAI_TAG, "Received message with identifier: 0x%08x", rxMessage.identifier);
+        if(rxMessage.data_length_code != 0)
         {
-            memset(&rxMessage, 0, sizeof(twai_message_t));
-            twai_receive(&rxMessage, portMAX_DELAY);
-            ESP_LOGI(TWAI_TAG, "Received message with identifier: 0x%08x", rxMessage.identifier);
-            if(rxMessage.data_length_code != 0)
-            {
-                for(int i = 0; i < rxMessage.data_length_code; i++)
-                    printf("0x%02x ", rxMessage.data[i]);
-                printf("\n");
-            }
-            if(identifierHeader == 0x00)
-            {
-                vTaskDelay(500 / portTICK_PERIOD_MS);
-                continue;
-            }
-            if (rxMessage.identifier == (ID_MASTER_PING | identifierHeader))
-            {
-                ESP_LOGI(TWAI_TAG, "Received master ping");
-                parameters.expectedIdentifier = ID_PING_RESP;
-                parameters.taskType = 0;
-                xQueueSend(txTaskQueue, &parameters, portMAX_DELAY);
-                continue;
-            }
-            else if(rxMessage.identifier == (ID_MASTER_REQUEST | identifierHeader))
-            {
-                ESP_LOGI(TWAI_TAG, "Received master request");
-                parameters.expectedIdentifier = ID_REQUEST_RESP;
-                parameters.taskType = 1;
-                xQueueSend(txTaskQueue, &parameters, portMAX_DELAY);
-                continue;
-            }
-            else if(rxMessage.identifier == (ID_MASTER_DATA | identifierHeader))
-            {
-                ESP_LOGI(TWAI_TAG, "Received master data");
-                parameters.expectedIdentifier = ID_DATA_RESP;
-                parameters.taskType = 2;
-                xQueueSend(txTaskQueue, &parameters, portMAX_DELAY);
-                continue;
-            }
+            for(int i = 0; i < rxMessage.data_length_code; i++)
+                printf("0x%02x ", rxMessage.data[i]);
+            printf("\n");
         }
-        vTaskDelete(NULL);
+        if(identifierHeader == 0x00)
+        {
+            vTaskDelay(500 / portTICK_PERIOD_MS);
+            continue;
+        }
+        if (rxMessage.identifier == (ID_MASTER_PING | identifierHeader))
+        {
+            ESP_LOGI(TWAI_TAG, "Received master ping");
+            parameters.expectedIdentifier = ID_PING_RESP;
+            parameters.taskType = 0;
+            xQueueSend(txTaskQueue, &parameters, portMAX_DELAY);
+            continue;
+        }
+        else if(rxMessage.identifier == (ID_MASTER_REQUEST | identifierHeader))
+        {
+            ESP_LOGI(TWAI_TAG, "Received master request");
+            parameters.expectedIdentifier = ID_REQUEST_RESP;
+            parameters.taskType = 1;
+            xQueueSend(txTaskQueue, &parameters, portMAX_DELAY);
+            continue;
+        }
+        else if(rxMessage.identifier == (ID_MASTER_DATA | identifierHeader))
+        {
+            ESP_LOGI(TWAI_TAG, "Received master data");
+            if ((rxMessage.data_length_code >= 8) && (rxMessage.data[0] == 0x00) && (rxMessage.data[1] == 0x00) && ((rxMessage.data[2] & 0xE0) == 0x60))
+            {
+                uint32_t batteryVoltage = ((rxMessage.data[2] & 0x1F) << 16) | (rxMessage.data[3] << 8) | rxMessage.data[4];
+                float voltage = batteryVoltage / 1000.0f;
+                printf("Battery voltage = %fV\n", voltage);
+            }
+            parameters.expectedIdentifier = ID_DATA_RESP;
+            parameters.taskType = 2;
+            xQueueSend(txTaskQueue, &parameters, portMAX_DELAY);
+            continue;
+        }
     }
+    vTaskDelete(NULL);
+}
+
 
     /**
      * @brief Task to send TWAI messages

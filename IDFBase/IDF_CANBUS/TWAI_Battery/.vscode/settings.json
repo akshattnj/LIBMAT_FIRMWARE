@@ -5,12 +5,22 @@
     "idf.customExtraVars": "{\"OPENOCD_SCRIPTS\":\"C:\\\\Users\\\\aksha\\\\.espressif\\\\tools\\\\openocd-esp32\\\\v0.11.0-esp32-20221026/openocd-esp32/share/openocd/scripts\",\"IDF_CCACHE_ENABLE\":\"1\"}",
     "idf.espIdfPathWin": "C:\\Users\\aksha\\esp\\esp-idf",
     "idf.openOcdConfigs": [
-        "interface/ftdi/esp32_devkitj_v1.cfg",
-        "target/esp32.cfg"
+        "board/esp32-wrover-kit-3.3v.cfg"
     ],
+    "idf.portWin": "COM3",
     "idf.pythonBinPathWin": "C:\\Users\\aksha\\.espressif\\python_env\\idf4.4_py3.8_env\\Scripts\\python.exe",
     "idf.toolsPathWin": "C:\\Users\\aksha\\.espressif",
-    "cmake.configureOnOpen": false,
     "idf.flashType": "UART",
-    "idf.portWin": "COM8"
+    "files.associations": {
+        "*.inc": "c",
+        "*.tcc": "c",
+        "deque": "c",
+        "list": "c",
+        "string": "c",
+        "unordered_map": "c",
+        "unordered_set": "c",
+        "vector": "c",
+        "system_error": "c",
+        "*.ipp": "c"
+    }
 }
