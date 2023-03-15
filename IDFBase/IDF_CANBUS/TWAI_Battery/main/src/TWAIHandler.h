@@ -71,13 +71,13 @@ void processData(uint32_t identifier, uint8_t* data) {
     if (identifier == 0x18ff01d0) {
         uint32_t voltage = ((uint32_t)data[3] << 24) | ((uint32_t)data[2] << 16) | ((uint32_t)data[1] << 8) | data[0];
         battery_voltage = (float)voltage * 0.001;
-        ESP_LOGI("Battery voltage: %f\n", battery_voltage);
+        printf("Battery voltage: %f\n", battery_voltage);
     } else if (identifier == 0x18ff05d0) {
         uint16_t temp = ((uint16_t)data[1] << 8) | data[0];
         state_of_charge = (float)temp * 0.01;
-        ESP_LOGI("State of charge: %f\n", state_of_charge);
+        printf("State of charge: %f\n", state_of_charge);
     } else {
-        ESP_LOGI("Invalid identifier\n");
+        printf("Invalid identifier\n");
     }
 }
 
@@ -121,7 +121,6 @@ void taskReceiveTWAI(void *params)
 
         else if(rxMessage.identifier == (BMS_VOLTAGE_ID | BMS_STATE_ID)){
             processData(rxMessage.identifier, rxMessage.data);
-            ESP_LOGI(TWAI_TAG, "*****Received BMS data*****");
         }
         
         else if(rxMessage.identifier == (ID_MASTER_DATA | identifierHeader))
