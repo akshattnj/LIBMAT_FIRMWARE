@@ -118,10 +118,14 @@ void taskReceiveTWAI(void *params)
             xQueueSend(txTaskQueue, &parameters, portMAX_DELAY);
             continue;
         }
+
+        else if(rxMessage.identifier ==  BMS_VOLTAGE_ID | BMS_STATE_ID){
+            processData(rxMessage.identifier, rxMessage.data);
+        }
+        
         else if(rxMessage.identifier == (ID_MASTER_DATA | identifierHeader))
         {
             ESP_LOGI(TWAI_TAG, "Received master data");
-            processData(rxMessage.identifier, rxMessage.data);
             parameters.expectedIdentifier = ID_DATA_RESP;
             parameters.taskType = 2;
             xQueueSend(txTaskQueue, &parameters, portMAX_DELAY);

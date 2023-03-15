@@ -16,4 +16,7 @@
 #define TWAI_RX 27
 #define TWAI_TX 26
 
+#define BMS_VOLTAGE_ID 0x18FF01D0
+#define BMS_STATE_ID 0x18FF05D0
+
 #endif
