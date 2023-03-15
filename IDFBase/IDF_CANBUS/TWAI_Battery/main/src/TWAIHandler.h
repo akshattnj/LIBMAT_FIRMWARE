@@ -65,6 +65,22 @@ public:
     /**
      * @brief Task to receive TWAI messages
      */
+void processData(uint32_t identifier, uint8_t* data) {
+    float battery_voltage, state_of_charge;
+    
+    if (identifier == 0x18ff01d0) {
+        uint32_t voltage = ((uint32_t)data[3] << 24) | ((uint32_t)data[2] << 16) | ((uint32_t)data[1] << 8) | data[0];
+        battery_voltage = (float)voltage * 0.001;
+        printf("Battery voltage: %f\n", battery_voltage);
+    } else if (identifier == 0x18ff05d0) {
+        uint16_t temp = ((uint16_t)data[1] << 8) | data[0];
+        state_of_charge = (float)temp * 0.01;
+        printf("State of charge: %f\n", state_of_charge);
+    } else {
+        printf("Invalid identifier\n");
+    }
+}
+
 void taskReceiveTWAI(void *params)
 {
     TWAITaskParameters parameters;
@@ -105,12 +121,7 @@ void taskReceiveTWAI(void *params)
         else if(rxMessage.identifier == (ID_MASTER_DATA | identifierHeader))
         {
             ESP_LOGI(TWAI_TAG, "Received master data");
-            if ((rxMessage.data_length_code >= 8) && (rxMessage.data[0] == 0x00) && (rxMessage.data[1] == 0x00) && ((rxMessage.data[2] & 0xE0) == 0x60))
-            {
-                uint32_t batteryVoltage = ((rxMessage.data[2] & 0x1F) << 16) | (rxMessage.data[3] << 8) | rxMessage.data[4];
-                float voltage = batteryVoltage / 1000.0f;
-                printf("Battery voltage = %fV\n", voltage);
-            }
+            processData(rxMessage.identifier, rxMessage.data);
             parameters.expectedIdentifier = ID_DATA_RESP;
             parameters.taskType = 2;
             xQueueSend(txTaskQueue, &parameters, portMAX_DELAY);
@@ -119,6 +130,7 @@ void taskReceiveTWAI(void *params)
     }
     vTaskDelete(NULL);
 }
+
 
 
     /**
