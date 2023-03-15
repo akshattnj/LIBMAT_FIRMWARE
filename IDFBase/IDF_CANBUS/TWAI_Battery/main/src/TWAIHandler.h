@@ -44,7 +44,7 @@ public:
         txTaskQueue = xQueueCreate(1, sizeof(TWAITaskParameters));
         gpio_reset_pin(txTWAI);
         gpio_reset_pin(rxTWAI);
-        const twai_timing_config_t timingConfig = TWAI_TIMING_CONFIG_25KBITS();
+        const twai_timing_config_t timingConfig = TWAI_TIMING_CONFIG_500KBITS();
         const twai_filter_config_t filterConfig = TWAI_FILTER_CONFIG_ACCEPT_ALL();
         const twai_general_config_t generalConfig = TWAI_GENERAL_CONFIG_DEFAULT(txTWAI, rxTWAI, TWAI_MODE_NORMAL);
         twai_reconfigure_alerts(TWAI_ALERT_ALL, NULL);
@@ -68,11 +68,11 @@ public:
 void processData(uint32_t identifier, uint8_t* data) {
     float battery_voltage, state_of_charge;
     
-    if (identifier == 0x18ff01d0) {
+    if (identifier == BMS_VOLTAGE_ID) {
         uint32_t voltage = ((uint32_t)data[3] << 24) | ((uint32_t)data[2] << 16) | ((uint32_t)data[1] << 8) | data[0];
         battery_voltage = (float)voltage * 0.001;
         printf("Battery voltage: %f\n", battery_voltage);
-    } else if (identifier == 0x18ff05d0) {
+    } else if (identifier == BMS_STATE_ID) {
         uint16_t temp = ((uint16_t)data[1] << 8) | data[0];
         state_of_charge = (float)temp * 0.01;
         printf("State of charge: %f\n", state_of_charge);
@@ -119,9 +119,13 @@ void taskReceiveTWAI(void *params)
             continue;
         }
 
-        else if(rxMessage.identifier == (BMS_VOLTAGE_ID | BMS_STATE_ID)){
+        else if(rxMessage.identifier == BMS_VOLTAGE_ID){
             processData(rxMessage.identifier, rxMessage.data);
         }
+        else if(rxMessage.identifier == BMS_STATE_ID){
+            processData(rxMessage.identifier, rxMessage.data);
+        }
+
         
         else if(rxMessage.identifier == (ID_MASTER_DATA | identifierHeader))
         {
