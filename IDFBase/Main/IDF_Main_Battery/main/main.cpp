@@ -3,7 +3,7 @@
 
 #include <stdio.h>
 
-#include "src/Networking/BLE/BLE.h"
+#include "src/Wireless/BLE/BLE.h"
 
 
 extern "C" void app_main(void)
