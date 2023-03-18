@@ -69,11 +69,11 @@ void processData(uint32_t identifier, uint8_t* data) {
     float battery_voltage, state_of_charge;
     
     if (identifier == BMS_VOLTAGE_ID) {
-        uint32_t voltage = ((uint32_t)data[3] << 24) | ((uint32_t)data[2] << 16) | ((uint32_t)data[1] << 8) | data[0];
+        uint32_t voltage = ((uint32_t)data[0] << 24) | ((uint32_t)data[1] << 16) | ((uint32_t)data[2] << 8) | data[3];
         battery_voltage = (float)voltage * 0.001;
         printf("Battery voltage: %f\n", battery_voltage);
     } else if (identifier == BMS_STATE_ID) {
-        uint16_t temp = ((uint16_t)data[1] << 8) | data[0];
+        uint16_t temp = ((uint16_t)data[0] << 8) | data[1];
         state_of_charge = (float)temp * 0.01;
         printf("State of charge: %f\n", state_of_charge);
     } else {
