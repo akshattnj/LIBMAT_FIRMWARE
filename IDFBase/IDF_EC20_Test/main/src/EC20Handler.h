@@ -25,6 +25,8 @@ class EC20Handler
 public:
     int16_t incomingLen;
     char incomingData[BUF_SIZE];
+    uint8_t connectFlags = 0; // {gotOk, gotError, GSM Mode Enabled, LTE mode enabled, GSM Connected, LTE connected}
+    uint8_t MQTTFlags = 0;    // {Server Connect, Server Connect Error, MQTT Connect, MQTT Connect Error, ready to send, send Success}
 
 #if CONFIG_EC20_ENABLE_GPS
     bool pauseGPS = true;
@@ -152,8 +154,8 @@ public:
                 {
                     MQTTFlags = (MQTTFlags | SERVER_ERROR | MQTT_ERROR) & (~SERVER_CONNECT) & (~MQTT_CONNECT);
                     ESP_LOGE(EC20_TAG, "MQTT Connect Failed. Network reset needed.");
+                    this->reconnectFlag = true;
                 }
-
 #endif
             chkEnd:
                 ESP_LOGI(EC20_TAG, "Got data: %s", incomingData);
@@ -268,6 +270,21 @@ public:
     }
 
 #if CONFIG_EC20_ENABLE_MQTT
+    void MQTTConnectionManager()
+    {
+        while (1)
+        {
+            if (this->reconnectFlag)
+            {
+                this->reconnectFlag = false;
+                this->pauseGPS = true;
+                this->reconnect();
+                this->pauseGPS = false;
+            }
+            vTaskDelay(100 / portTICK_RATE_MS);
+        }
+    }
+
     bool waitForMQTTRespone(uint8_t messageCode)
     {
         uint8_t check;
@@ -335,12 +352,16 @@ public:
     {
         if (MQTTFlags & MQTT_CONNECT)
         {
+            uint8_t dataLength = strlen(data);
+            ESP_LOGI(EC20_TAG, "Sending Telemetry: %s %d", data, dataLength);
             char sendBuffer[BUF_SIZE];
-            sprintf(sendBuffer, "AT+QMTPUBEX=0,0,0,0,\"%s\",%d\r\n", topic, strlen(data));
+            memset(sendBuffer, 0, BUF_SIZE);
+            sprintf(sendBuffer, "AT+QMTPUBEX=0,0,0,0,\"%s\",%d\r\n", topic, dataLength);
             uart_write_bytes(EC20_PORT_NUM, sendBuffer, strlen(sendBuffer));
             this->waitForReady();
-            uart_write_bytes(EC20_PORT_NUM, data, strlen(data));
-            uart_write_bytes(EC20_PORT_NUM, "\r\n", 2);
+            memset(sendBuffer, 0, BUF_SIZE);
+            sprintf(sendBuffer, "%s\r\n", data);
+            uart_write_bytes(EC20_PORT_NUM, sendBuffer, strlen(sendBuffer));
             this->publishResponse();
             return true;
         }
@@ -351,8 +372,10 @@ public:
     {
         while (1)
         {
-            if ((MQTTFlags & SEND_READY) > 0)
+            if ((MQTTFlags & SEND_READY) > 0){
+                MQTTFlags = MQTTFlags & (~SEND_READY);
                 break;
+            }
             taskYIELD();
             vTaskDelay(10 / portTICK_RATE_MS);
         }
@@ -363,7 +386,10 @@ public:
         while (1)
         {
             if ((MQTTFlags & SEND_SUCCESS) > 0)
+            {
+                MQTTFlags = MQTTFlags & (~SEND_SUCCESS);
                 break;
+            }
             if ((MQTTFlags & MQTT_ERROR) > 0)
             {
                 ESP_LOGE(EC20_TAG, "Publish Failed. Need to Reconnect");
@@ -375,11 +401,11 @@ public:
 #endif
 
 #if CONFIG_EC20_ENABLE_GPS
-/**
- * @brief Task to send GPS location request to EC20 module
- * 
- * @param args Task arguments if any - NULL in this case
- */
+    /**
+     * @brief Task to send GPS location request to EC20 module
+     *
+     * @param args Task arguments if any - NULL in this case
+     */
     void getGPSData(void *args)
     {
         while (1)
@@ -401,7 +427,7 @@ public:
 
     /**
      * @brief Parse GPS response from EC20
-     * 
+     *
      * @param output Data retrieved from EC20 module
      */
     void readGSPResponse(char *output)
@@ -428,13 +454,14 @@ public:
                 ESP_LOGI(EC20_TAG, "%f %f", longitude, latitude);
             }
         }
+        ESP_LOGI(EC20_TAG, "Location Valid: %d", this->locationValid);
     }
-/**
- * @brief Get the Location Valid object
- * 
- * @return true 
- * @return false 
- */
+    /**
+     * @brief Get the Location Valid object
+     *
+     * @return true
+     * @return false
+     */
     bool getLocationValid()
     {
         return this->locationValid;
@@ -443,10 +470,9 @@ public:
 #endif
 
 private:
-    uint8_t connectFlags = 0; // {gotOk, gotError, GSM Mode Enabled, LTE mode enabled, GSM Connected, LTE connected}
-    uint8_t MQTTFlags = 0;    // {Server Connect, Server Connect Error, MQTT Connect, MQTT Connect Error, ready to send, send Success}
     nmea_s *GPSData;
     bool locationValid = false;
+    bool reconnectFlag = false;
 };
 
 #endif

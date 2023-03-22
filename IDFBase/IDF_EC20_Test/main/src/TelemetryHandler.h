@@ -26,30 +26,33 @@ public:
     {
         while (1)
         {
-            taskYIELD();
-            this->root = cJSON_CreateObject();
-#if CONFIG_EC20_ENABLE_GPS
-            if (networkHandler->getLocationValid())
+            if ((networkHandler->MQTTFlags & MQTT_CONNECT) > 0)
             {
-                cJSON_AddNumberToObject(root, "lat", networkHandler->latitude);
-                cJSON_AddNumberToObject(root, "lon", networkHandler->longitude);
-            }
+                taskYIELD();
+                this->root = cJSON_CreateObject();
+#if CONFIG_EC20_ENABLE_GPS
+                if (networkHandler->getLocationValid())
+                {
+                    cJSON_AddNumberToObject(root, "lat", networkHandler->latitude);
+                    cJSON_AddNumberToObject(root, "lon", networkHandler->longitude);
+                }
 #endif
-            cJSON_AddNumberToObject(root, "testData", esp_timer_get_time() / 1000);
-            char *telemetry = cJSON_PrintUnformatted(root);
-            ESP_LOGI(TELEMETRY_TAG, "%s", telemetry);
-            networkHandler->pauseGPS = true;
-            bool sent = networkHandler->sendTelemetry(telemetry, TELEMETRY_TOPIC);
-            networkHandler->pauseGPS = false;
-            if (sent)
-                ESP_LOGI(TELEMETRY_TAG, "Send Success");
-            else
-                ESP_LOGE(TELEMETRY_TAG, "Send failed");
-            cJSON_Delete(root);
-            taskYIELD();
-            vTaskDelay(2500 / portTICK_RATE_MS);
-            taskYIELD();
-            vTaskDelay(2500 / portTICK_RATE_MS);
+                cJSON_AddNumberToObject(root, "testData", esp_timer_get_time() / 1000);
+                char *telemetry = cJSON_PrintUnformatted(root);
+                ESP_LOGI(TELEMETRY_TAG, "%s", telemetry);
+                networkHandler->pauseGPS = true;
+                bool sent = networkHandler->sendTelemetry(telemetry, TELEMETRY_TOPIC);
+                networkHandler->pauseGPS = false;
+                if (sent)
+                    ESP_LOGI(TELEMETRY_TAG, "Send Success");
+                else
+                {
+                    ESP_LOGE(TELEMETRY_TAG, "Send failed");
+                }
+                cJSON_Delete(root);
+                taskYIELD();
+            }
+            vTaskDelay(3000 / portTICK_RATE_MS);
         }
     }
 
