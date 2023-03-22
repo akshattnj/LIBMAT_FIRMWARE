@@ -31,20 +31,24 @@ extern "C" void app_main(void)
     testEC20.begin();
     xTaskCreate([](void *args)
                 { testEC20.portListner(); },
-                "EC20 Reader", 2048, NULL, 10, NULL);
+                "EC20 Reader", 4096, NULL, 10, NULL);
     testEC20.setup();
 
 #if CONFIG_EC20_ENABLE_GPS
     xTaskCreate([](void *args)
                 { testEC20.getGPSData(args); },
-                "EC20 GPS", 2048, NULL, 10, NULL);
+                "EC20 GPS", 4096, NULL, 10, NULL);
 #endif
 
 #if CONFIG_EC20_ENABLE_MQTT
     testEC20.connect();
     xTaskCreate([](void *args)
                 { telemetryHandler.sendTelemetry(); },
-                "Telemetry", 2048, NULL, 10, NULL);
+                "Telemetry", 4096, NULL, 10, NULL);
+    
+    xTaskCreate([](void *args)
+                { testEC20.MQTTConnectionManager(); },
+                "MQTT Connector", 2048, NULL, 10, NULL);
 #endif
 
     while (1)
