@@ -140,55 +140,14 @@ public:
      */
     void taskSendTWAI(void *params)
     {
-        TWAITaskParameters parameters;
         while (1)
         {
-            if (xQueueReceive(txTaskQueue, &parameters, portMAX_DELAY) == pdTRUE)
-            {
-                if (parameters.taskType == 0)
-                {
-                    ESP_LOGI(TWAI_TAG, "Sending ping request");
-                    twai_message_t pingMessage = {.ss = 1, .identifier = parameters.expectedIdentifier, .data_length_code = 0, .data = {0, 0, 0, 0, 0, 0, 0, 0}};
-                    while (xSemaphoreTake(doneSem, 0) != pdTRUE)
-                    {
-                        esp_err_t error = twai_transmit(&pingMessage, portMAX_DELAY);
-                        if(error != 0)
-                        {
-                            ESP_LOGE(TWAI_TAG, "Error sending ping request: %d", error);
-                        }
-                        vTaskDelay(500 / portTICK_PERIOD_MS);
-                    }
-                }
-                    
-                else if(parameters.taskType == 1)
-                {
-                    ESP_LOGI(TWAI_TAG, "Sending data request");
-                    twai_message_t dataMessage = {.identifier = parameters.expectedIdentifier, .data_length_code = 0, .data = {0, 0, 0, 0, 0, 0, 0, 0}};
-                    while (xSemaphoreTake(doneSem, 0) != pdTRUE)
-                    {
-                        esp_err_t error = twai_transmit(&dataMessage, portMAX_DELAY);
-                        if(error != 0)
-                        {
-                            ESP_LOGE(TWAI_TAG, "Error sending data request: %d", error);
-                        }
-                        vTaskDelay(500 / portTICK_PERIOD_MS);
-                    }
-                }
-                else if (parameters.taskType == 2)
-                {
-                    ESP_LOGI(TWAI_TAG, "Sending data");
-                    twai_message_t dataMessage = {.identifier = parameters.expectedIdentifier, .data_length_code = 8, .data = {0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88}};
-                    while (xSemaphoreTake(doneSem, 0) != pdTRUE)
-                    {
-                        esp_err_t error = twai_transmit(&dataMessage, portMAX_DELAY);
-                        if(error != 0)
-                        {
-                            ESP_LOGE(TWAI_TAG, "Error sending data: %d", error);
-                        }
-                        vTaskDelay(500 / portTICK_PERIOD_MS);
-                    }
-                }
-            }
+
+            ESP_LOGI(TWAI_TAG, "Sending ping request");
+            twai_message_t pingMessage = {.ss = 1, .identifier = 0x18FF005B, .data_length_code = 8, .data = {0x01, 0x60, 0x04, 0xc4, 0x09, 0xff, 0xff, 0xff}};
+            esp_err_t error = twai_transmit(&pingMessage, portMAX_DELAY);
+            if(error != 0)
+            vTaskDelay(50 / portTICK_PERIOD_MS);
         }
         vTaskDelete(NULL);
     }
