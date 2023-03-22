@@ -10,6 +10,7 @@ extern "C"
 #include <esp_err.h>
 #include <esp_log.h>
 #include <driver/twai.h>
+#include "esp_timer.h"
 }
 
 #include <string.h>
@@ -29,6 +30,18 @@ public:
         this->txTWAI = txTwai;
         this->rxTWAI = rxTwai;
     }
+
+//     /**
+//      * @brief used as a delay function
+//     */
+//     void funcdelay(uint32_t delay_time_ms) {
+//     uint64_t current_time_us = esp_timer_get_time();
+//     uint64_t target_time_us = current_time_us + (delay_time_ms * 1000);
+//     while(esp_timer_get_time() < target_time_us){
+//         vTaskDelay(1 / portTICK_PERIOD_MS);
+//     }
+//     ESP_LOGI(TWAI_TAG, "Delay Done");
+// }
 
     /**
      * @brief Build semaphores, queues and install TWAI driver
@@ -142,13 +155,25 @@ public:
     {
         while (1)
         {
-
-            ESP_LOGI(TWAI_TAG, "Sending ping request");
-            twai_message_t pingMessage = {.ss = 1, .identifier = 0x18FF005B, .data_length_code = 8, .data = {0x01, 0x60, 0x04, 0xc4, 0x09, 0xff, 0xff, 0xff}};
+            ESP_LOGI(TWAI_TAG, "Sending 0x18ff01d0 data");
+            twai_message_t pingMessage = {.ss = 1, .identifier = 0x18ff05d0, .data_length_code = 8, .data = {0x01, 0x60, 0x04, 0xc4, 0x09, 0xff, 0xff, 0xff}};
             esp_err_t error = twai_transmit(&pingMessage, portMAX_DELAY);
             if(error != 0)
             vTaskDelay(50 / portTICK_PERIOD_MS);
-        }
+            
+            ESP_LOGI(TWAI_TAG, "Sending 0x18ff05d0 data");
+            twai_message_t pingMessage2 = {.ss = 1, .identifier = 0x18ff05d0, .data_length_code = 8, .data = {0x01, 0x60, 0x04, 0xc4, 0x09, 0xff, 0xff, 0xff}};
+            error = twai_transmit(&pingMessage2, portMAX_DELAY);
+            if(error != 0)
+             vTaskDelay(50 / portTICK_PERIOD_MS);
+            
+            ESP_LOGI(TWAI_TAG, "Sending 0x18FF005B data");
+            twai_message_t pingMessage3 = {.ss = 1, .identifier = 0x18ff05d0, .data_length_code = 8, .data = {0x01, 0x60, 0x04, 0xc4, 0x09, 0xff, 0xff, 0xff}};
+            error = twai_transmit(&pingMessage3, portMAX_DELAY);
+            if(error != 0)
+            vTaskDelay(50 / portTICK_PERIOD_MS);
+            }
+
         vTaskDelete(NULL);
     }
 
