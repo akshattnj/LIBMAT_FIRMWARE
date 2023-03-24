@@ -35,6 +35,6 @@
 #define ID_REQUEST_RESP   0x0A1
 #define ID_DATA_RESP      0x0A3
 
-
+#define BMS_STATE_ID 0x18FF05D0
 
 #endif

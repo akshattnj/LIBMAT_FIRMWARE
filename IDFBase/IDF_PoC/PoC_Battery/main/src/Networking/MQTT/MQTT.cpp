@@ -97,8 +97,7 @@ namespace MQTT
             if ((mqttFlags & BIT0) == 0)
                 continue;
             cJSON *root = cJSON_CreateObject();
-            cJSON_AddNumberToObject(root, "tmp", rand());
-            cJSON_AddNumberToObject(root, "hum", rand());
+            cJSON_AddNumberToObject(root, "ba%", Commons::batteryPercentage);
             char *data = cJSON_Print(root);
             ESP_LOGI(MQTT_TAG, "Sending Data: %s", data);
             uint16_t msg_id = esp_mqtt_client_publish(client, "v1/devices/me/telemetry", data, 0, 0, 0);
