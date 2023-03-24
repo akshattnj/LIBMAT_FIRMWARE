@@ -24,6 +24,7 @@ namespace Commons
 {
     extern uint8_t batteryPercentage[4];
     extern uint8_t animationSelection[4];
+    extern bool solenoidState[4];
 }
 
 

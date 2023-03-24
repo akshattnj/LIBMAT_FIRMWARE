@@ -51,7 +51,7 @@ namespace LED
                     swappingAnimation(false, i);
                     break;
                 default:
-                    clear(i);
+                    noBatteryAnimation(i);
                     vTaskDelay(100 / portTICK_PERIOD_MS);
                     break;
                 }
@@ -73,7 +73,7 @@ namespace LED
                     swappingAnimation(true, i);
                     break;
                 default:
-                    clear(i);
+                    noBatteryAnimation(i);
                     vTaskDelay(100 / portTICK_PERIOD_MS);
                     break;
                 }
@@ -81,6 +81,15 @@ namespace LED
 
             vTaskDelay(1000 / portTICK_PERIOD_MS);
         }
+    }
+
+    void noBatteryAnimation(uint8_t slot)
+    {
+        for (int i = 7 * slot; i < (7 * slot) + 7; i++)
+        {
+            setPixel(i, 255, 0, 0);
+        }
+        ESP_ERROR_CHECK(strip->refresh(strip, 100));
     }
 
     void startupAnimation()
@@ -119,7 +128,6 @@ namespace LED
         }
         ESP_ERROR_CHECK(strip->refresh(strip, 100));
     }
-
     void chargingAnimation(uint8_t batteryPercentage, bool lastBlink, uint8_t slot)
     {
         uint8_t green = (uint8_t)((float)batteryPercentage * 2.55);

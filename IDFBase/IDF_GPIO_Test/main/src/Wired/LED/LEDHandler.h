@@ -20,6 +20,7 @@ namespace LED
     void normalAnimation(uint8_t batteryPercentage, uint8_t slot);
     void chargingAnimation(uint8_t batteryPercentage, bool lastBlink, uint8_t slot);
     void swappingAnimation(bool blink, uint8_t slot);
+    void noBatteryAnimation(uint8_t slot);
 }
 
 #endif

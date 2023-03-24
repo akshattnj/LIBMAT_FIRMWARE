@@ -59,8 +59,61 @@ namespace BATT
         while(1)
         {
             openDoor(2);
-            vTaskDelay(2000 / portTICK_PERIOD_MS);
+            vTaskDelay(10000 / portTICK_PERIOD_MS);
         }
-        
+    }
+
+    void doorScanner(void *params)
+    {
+        while(1)
+        {
+            ESP_LOGI("DoorScanner", "Door 0: %d, Door 2: %d", gpio_get_level(doors[0].sense), gpio_get_level(doors[2].sense));
+            if(gpio_get_level(doors[0].sense) == 1)
+            {
+                openDoor(0);
+
+            }
+            if(gpio_get_level(doors[2].sense) == 1)
+            {
+                openDoor(2);
+            }
+            vTaskDelay(100 / portTICK_PERIOD_MS);
+        }
+    }
+    void batteryTask(void *params)
+    {
+        while(1)
+        {
+            for(int i = 0; i < 4; i++)
+            {
+                if(Commons::batteryPercentage[i] < 20)
+                {
+                    gpio_set_level(doors[i].charge, 1);
+                }
+                else
+                {
+                    gpio_set_level(doors[i].charge, 0);
+                }
+            }
+            vTaskDelay(1000 / portTICK_PERIOD_MS);
+        }
+    }
+    void batterySenseTask(void *params)
+    {
+        while(1)
+        {
+            for(int i = 0; i < 4; i++)
+            {
+                if(Commons::batteryPercentage[i] < 20)
+                {
+                    gpio_set_level(doors[i].charge, 1);
+                }
+                else
+                {
+                    gpio_set_level(doors[i].charge, 0);
+                }
+            }
+            vTaskDelay(1000 / portTICK_PERIOD_MS);
+        }
     }
 }

@@ -37,5 +37,11 @@ extern "C" void app_main(void)
         Commons::animationSelection[2] = 2;
         Commons::animationSelection[3] = 2;
         vTaskDelay(10000 / portTICK_PERIOD_MS);
+
+        Commons::animationSelection[0] = 1;
+        Commons::animationSelection[1] = 10;
+        Commons::animationSelection[2] = 0;
+        Commons::animationSelection[3] = 2;
+        vTaskDelay(10000 / portTICK_PERIOD_MS);
     }
 }
