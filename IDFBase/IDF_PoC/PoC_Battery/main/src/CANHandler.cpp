@@ -50,13 +50,13 @@ namespace CANHandler
         {
             memset(&rxMessage, 0, sizeof(twai_message_t));
             twai_receive(&rxMessage, portMAX_DELAY);
-            ESP_LOGI(TWAI_TAG, "Received message with identifier: 0x%08x", rxMessage.identifier);
-            if(rxMessage.data_length_code != 0)
-            {
-                for(int i = 0; i < rxMessage.data_length_code; i++)
-                    printf("0x%02x ", rxMessage.data[i]);
-                printf("\n");
-            }
+            // ESP_LOGI(TWAI_TAG, "Received message with identifier: 0x%08x", rxMessage.identifier);
+            // if(rxMessage.data_length_code != 0)
+            // {
+            //     for(int i = 0; i < rxMessage.data_length_code; i++)
+            //         printf("0x%02x ", rxMessage.data[i]);
+            //     printf("\n");
+            // }
             if(identifierHeader == 0x00)
             {
                 vTaskDelay(500 / portTICK_PERIOD_MS);
@@ -68,6 +68,12 @@ namespace CANHandler
                 parameters.expectedIdentifier = ID_PING_RESP;
                 parameters.taskType = 0;
                 xQueueSend(txTaskQueue, &parameters, portMAX_DELAY);
+                continue;
+            }
+            if(rxMessage.identifier == BMS_STATE_ID)
+            {
+                Commons::batteryPercentage = (uint8_t)((float)(rxMessage.data[0] << 8 | rxMessage.data[1]) * 0.01);
+                ESP_LOGI(TWAI_TAG, "Got battery percent: %d", Commons::batteryPercentage);
                 continue;
             }
         }
