@@ -1,32 +1,42 @@
-# _Sample project_
+# _LiBMAT Project Battery Firmware_
 
-(See the README.md file in the upper level 'examples' directory for more information about examples.)
-
-This is the simplest buildable example. The example is used by command `idf.py create-project`
-that copies the project to user specified path and set it's name. For more information follow the [docs page](https://docs.espressif.com/projects/esp-idf/en/latest/api-guides/build-system.html#start-a-new-project)
+## Brief Description of the project
+LiBMAT stands for Lithium Battery Management And Tracking. The objective of this project is to track and manage battries using IoT. This specific project contains the firmware that is uploaded to the individual battries in this project.
 
 
-
-## How to use example
-We encourage the users to use the example as a template for the new projects.
-A recommended way is to follow the instructions on a [docs page](https://docs.espressif.com/projects/esp-idf/en/latest/api-guides/build-system.html#start-a-new-project).
-
-## Example folder contents
-
-The project **sample_project** contains one source file in C language [main.c](main/main.c). The file is located in folder [main](main).
-
-ESP-IDF projects are built using CMake. The project build configuration is contained in `CMakeLists.txt`
-files that provide set of directives and instructions describing the project's source files and targets
-(executable, library, or both). 
-
-Below is short explanation of remaining files in the project folder.
+Below is short explanation of the files in the project folder.
 
 ```
 ├── CMakeLists.txt
+├── components
+│   └─ esp-nimble-cpp              BLE CPP library
+├── Makefile
+├── sdkconfig
+├── partitions.csv
 ├── main
 │   ├── CMakeLists.txt
-│   └── main.c
-└── README.md                  This is the file you are currently reading
+│   ├── src
+│   │   ├── Commons                Contains various variables that are used across files
+│   │   │  ├── Commons.h
+│   │   │  └── Commons.cpp
+│   │   ├── Networking             This contains all wireless networking related things
+│   │   │   ├── BLE
+│   │   │   │   ├── BLEHandler.cpp Implementation file for BLE
+│   │   │   │   └── BLEHandler.h   Header file for BLE
+│   │   │   ├── MQTT
+│   │   │   │   ├── MQTT.cpp       Implementation file for MQTT
+│   │   │   │   └── MQTT.h         Header file for MQTT
+│   │   │   ├── WiFi
+│   │   │   │   ├── WiFi.cpp       Implementation file for WiFi
+│   │   │   │   └── WiFi.h         Header file for WiFi
+│   │   │   └── WS
+│   │   │       ├── WS.cpp         Implementation file for Websockets
+│   │   │       └── WS.h           Header file for Web Sockets
+│   │   ├── CANHandler.cpp         Implementation file for controlling the CAN Bus
+│   │   ├── CANHandler.h           Header file for controlling the CAN Bus
+│   │   ├── LEDHandler.cpp         Implementation file for controlling the WS2812 LED Strips
+│   │   ├── LEDHandler.h           Header file for controlling the WS2812 LED Strips
+│   │   └── definations.h          Contains constants that are used across files
+│   └── main.cpp
+└── README.md                      This is the file you are currently reading
 ```
-Additionally, the sample project contains Makefile and component.mk files, used for the legacy Make based build system. 
-They are not used or needed when building with CMake and idf.py.
