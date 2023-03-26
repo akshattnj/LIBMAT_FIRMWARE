@@ -8,7 +8,7 @@ namespace CANHandler
     gpio_num_t rxTWAI = GPIO_NUM_27;
 
     uint32_t identifierHeader = 0x0B0;
-    uint32_t canTimeout = 0x00;
+    int64_t canTimeout = 0x00;
 
     typedef struct TWAITaskParameters{
         uint32_t expectedIdentifier;
@@ -46,6 +46,10 @@ namespace CANHandler
             memset(&rxMessage, 0, sizeof(twai_message_t));
             twai_receive(&rxMessage, portMAX_DELAY);
             ESP_LOGI(TWAI_TAG, "Received message with identifier: 0x%08x", rxMessage.identifier);
+            if(esp_timer_get_time() - canTimeout > 10000000)
+            {
+                Commons::batteryPercentage = 0;
+            }
             if(rxMessage.data_length_code != 0)
             {
                 for(int i = 0; i < rxMessage.data_length_code; i++)
@@ -67,6 +71,7 @@ namespace CANHandler
             }
             if(rxMessage.identifier == BMS_STATE_ID)
             {
+                canTimeout = esp_timer_get_time();
                 Commons::batteryPercentage = (uint8_t)((float)(rxMessage.data[0] << 8 | rxMessage.data[1]) * 0.01);
                 ESP_LOGI(TWAI_TAG, "Got battery percent: %d", Commons::batteryPercentage);
                 continue;

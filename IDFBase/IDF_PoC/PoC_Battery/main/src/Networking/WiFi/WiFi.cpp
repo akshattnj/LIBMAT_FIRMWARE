@@ -87,16 +87,6 @@ namespace WiFi
         ESP_LOGI(WIFI_TAG, "WiFi initial setup complete");
     }
 
-    void setNetCred()
-    {
-        backupNetAP.ssid = SSID;
-        backupNetAP.password = PASSWORD;
-        ESP_LOGI(WIFI_TAG, "%s %s", backupNetAP.ssid, backupNetAP.password);
-        Commons::WiFiFlags = Commons::WiFiFlags | BIT2 | BIT3;
-        esp_wifi_scan_stop();
-        xQueueSend(WiFiConnectQueue, (void *)&(backupNetAP), 0);
-    }
-
     void disconnectWiFi()
     {
         ESP_ERROR_CHECK(esp_wifi_disconnect());
