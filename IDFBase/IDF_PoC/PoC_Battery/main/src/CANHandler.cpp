@@ -8,7 +8,7 @@ namespace CANHandler
     gpio_num_t rxTWAI = GPIO_NUM_27;
 
     uint32_t identifierHeader = 0x0B0;
-    uint32_t canTimeout = 0x00;
+    int64_t canTimeout = 0x00;
 
     typedef struct TWAITaskParameters{
         uint32_t expectedIdentifier;
@@ -45,13 +45,18 @@ namespace CANHandler
         {
             memset(&rxMessage, 0, sizeof(twai_message_t));
             twai_receive(&rxMessage, portMAX_DELAY);
-            ESP_LOGI(TWAI_TAG, "Received message with identifier: 0x%08x", rxMessage.identifier);
-            if(rxMessage.data_length_code != 0)
+            // ESP_LOGI(TWAI_TAG, "Received message with identifier: 0x%08x", rxMessage.identifier);
+            // if(rxMessage.data_length_code != 0)
+            // {
+            //     for(int i = 0; i < rxMessage.data_length_code; i++)
+            //         printf("0x%02x ", rxMessage.data[i]);
+            //     printf("\n");
+            // }
+            if(esp_timer_get_time() - canTimeout > 10000000)
             {
-                for(int i = 0; i < rxMessage.data_length_code; i++)
-                    printf("0x%02x ", rxMessage.data[i]);
-                printf("\n");
+                Commons::batteryPercentage = 0;
             }
+            
             if(identifierHeader == 0x00)
             {
                 vTaskDelay(500 / portTICK_PERIOD_MS);
@@ -67,6 +72,7 @@ namespace CANHandler
             }
             if(rxMessage.identifier == BMS_STATE_ID)
             {
+                canTimeout = esp_timer_get_time();
                 Commons::batteryPercentage = (uint8_t)((float)(rxMessage.data[0] << 8 | rxMessage.data[1]) * 0.01);
                 ESP_LOGI(TWAI_TAG, "Got battery percent: %d", Commons::batteryPercentage);
                 continue;
@@ -95,24 +101,6 @@ namespace CANHandler
                 }
             }
         }
-        vTaskDelete(NULL);
-    }
-
-    void taskControlTWAI(void *params)
-    {
-        ESP_ERROR_CHECK(twai_start());
-        TWAITaskParameters parameters;
-        while (1)
-        {
-            if(xQueueReceive(Commons::queueCAN, NULL, portMAX_DELAY) == pdTRUE)
-            {
-                ESP_LOGI(TWAI_TAG, "Starting TWAI communication");
-                parameters.expectedIdentifier = ID_MASTER_PING;
-                parameters.taskType = 0;
-                xQueueSend(txTaskQueue, &parameters, portMAX_DELAY);
-            }
-        }
-        endTWAI();
         vTaskDelete(NULL);
     }
 }

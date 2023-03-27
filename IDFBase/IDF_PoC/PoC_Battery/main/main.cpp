@@ -14,7 +14,6 @@ extern "C" void app_main(void)
     WiFi::initialiseWiFiSTA();
     BLE::initialiseBLE();
     CANHandler::startTWAI();
-    WiFi::setNetCred();
     MQTT::mqttSetup();
     MQTT::connectMQTT();
     LED::init();

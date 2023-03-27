@@ -37,8 +37,26 @@ namespace LED
             switch (Commons::animationSelection)
             {
             case 0:
-                normalAnimation(Commons::batteryPercentage);
-                vTaskDelay(1000 / portTICK_PERIOD_MS);
+                if (Commons::batteryPercentage == 0)
+                {
+                    normalAnimation(0);
+                    vTaskDelay(250 / portTICK_PERIOD_MS);
+                    clear();
+                    vTaskDelay(100 / portTICK_PERIOD_MS);
+                    normalAnimation(0);
+                    vTaskDelay(250 / portTICK_PERIOD_MS);
+                    clear();
+                    vTaskDelay(100 / portTICK_PERIOD_MS);
+                    normalAnimation(0);
+                    vTaskDelay(250 / portTICK_PERIOD_MS);
+                    clear();
+                    vTaskDelay(3000 / portTICK_PERIOD_MS);
+                }
+                else
+                {
+                    normalAnimation(Commons::batteryPercentage);
+                    vTaskDelay(1000 / portTICK_PERIOD_MS);
+                }
                 break;
             case 1:
                 chargingAnimation(Commons::batteryPercentage, false);
@@ -61,7 +79,7 @@ namespace LED
 
     void startupAnimation()
     {
-        for (int i = 0; i < 10; i++)
+        for (int i = 0; i <= 10; i++)
         {
             normalAnimation(i * 10);
             vTaskDelay(100 / portTICK_PERIOD_MS);
@@ -75,15 +93,17 @@ namespace LED
         uint8_t green = (uint8_t)((float)batteryPercentage * 2.55);
         uint8_t red = 255 - green;
         uint8_t ledsToFill = (uint8_t)((float)batteryPercentage * 0.01 * NEOPIXEL_NUM);
+        if(ledsToFill == 0)
+            ledsToFill = 1;
         for (int i = 0; i < ledsToFill; i++)
         {
             setPixel(i, red, green, 0);
         }
-        for(int i = ledsToFill; i < NEOPIXEL_NUM; i++)
+        for (int i = ledsToFill; i < NEOPIXEL_NUM; i++)
         {
             setPixel(i, 0, 0, 0);
         }
-        ESP_ERROR_CHECK(strip->refresh(strip, 100)); 
+        ESP_ERROR_CHECK(strip->refresh(strip, 100));
     }
 
     void chargingAnimation(uint8_t batteryPercentage, bool lastBlink)
@@ -91,7 +111,8 @@ namespace LED
         uint8_t green = (uint8_t)((float)batteryPercentage * 2.55);
         uint8_t red = 255 - green;
         uint8_t ledsToFill = (uint8_t)((float)batteryPercentage * 0.01 * NEOPIXEL_NUM);
-        if(ledsToFill == 0) ledsToFill = 1;
+        if (ledsToFill == 0)
+            ledsToFill = 1;
         for (int i = 0; i < ledsToFill - 1; i++)
         {
             setPixel(i, red, green, 0);
@@ -104,7 +125,7 @@ namespace LED
         {
             setPixel(ledsToFill - 1, red, green, 0);
         }
-        for(int i = ledsToFill; i < NEOPIXEL_NUM; i++)
+        for (int i = ledsToFill; i < NEOPIXEL_NUM; i++)
         {
             setPixel(i, 0, 0, 0);
         }
