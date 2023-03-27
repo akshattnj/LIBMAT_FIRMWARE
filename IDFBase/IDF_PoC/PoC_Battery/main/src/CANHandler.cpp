@@ -45,17 +45,18 @@ namespace CANHandler
         {
             memset(&rxMessage, 0, sizeof(twai_message_t));
             twai_receive(&rxMessage, portMAX_DELAY);
-            ESP_LOGI(TWAI_TAG, "Received message with identifier: 0x%08x", rxMessage.identifier);
+            // ESP_LOGI(TWAI_TAG, "Received message with identifier: 0x%08x", rxMessage.identifier);
+            // if(rxMessage.data_length_code != 0)
+            // {
+            //     for(int i = 0; i < rxMessage.data_length_code; i++)
+            //         printf("0x%02x ", rxMessage.data[i]);
+            //     printf("\n");
+            // }
             if(esp_timer_get_time() - canTimeout > 10000000)
             {
                 Commons::batteryPercentage = 0;
             }
-            if(rxMessage.data_length_code != 0)
-            {
-                for(int i = 0; i < rxMessage.data_length_code; i++)
-                    printf("0x%02x ", rxMessage.data[i]);
-                printf("\n");
-            }
+            
             if(identifierHeader == 0x00)
             {
                 vTaskDelay(500 / portTICK_PERIOD_MS);
@@ -100,24 +101,6 @@ namespace CANHandler
                 }
             }
         }
-        vTaskDelete(NULL);
-    }
-
-    void taskControlTWAI(void *params)
-    {
-        ESP_ERROR_CHECK(twai_start());
-        TWAITaskParameters parameters;
-        while (1)
-        {
-            if(xQueueReceive(Commons::queueCAN, NULL, portMAX_DELAY) == pdTRUE)
-            {
-                ESP_LOGI(TWAI_TAG, "Starting TWAI communication");
-                parameters.expectedIdentifier = ID_MASTER_PING;
-                parameters.taskType = 0;
-                xQueueSend(txTaskQueue, &parameters, portMAX_DELAY);
-            }
-        }
-        endTWAI();
         vTaskDelete(NULL);
     }
 }

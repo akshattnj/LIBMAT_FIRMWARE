@@ -70,13 +70,12 @@ namespace BLE
         pAdvertising->start();
     }
 
-    void sendData(char *data)
+    void sendData(char *data, size_t len)
     {
         if (pServer->getConnectedCount() == 0)
             return;
-        char buffer[50];
-        sprintf(buffer, "%s %u\n", data, (uint32_t)esp_timer_get_time());
-        pCharacteristic->setValue(buffer);
+            
+        pCharacteristic->setValue(data);
         pCharacteristic->notify();
     }
 
@@ -85,6 +84,7 @@ namespace BLE
         while (true)
         {
             char buffer[50];
+            memset(buffer, 0, sizeof(buffer));
             sprintf(buffer, "{\"ba%%\":%d}\n", Commons::batteryPercentage);
             sendData(buffer);
             vTaskDelay(1000 / portTICK_PERIOD_MS);
