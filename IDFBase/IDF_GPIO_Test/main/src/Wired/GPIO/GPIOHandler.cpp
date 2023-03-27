@@ -59,7 +59,7 @@ namespace BATT
         while(1)
         {
             openDoor(2);
-            vTaskDelay(10000 / portTICK_PERIOD_MS);
+            vTaskDelay(1000 / portTICK_PERIOD_MS);
         }
     }
 
