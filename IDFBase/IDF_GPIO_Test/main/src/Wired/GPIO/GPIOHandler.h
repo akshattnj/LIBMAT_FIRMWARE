@@ -21,6 +21,7 @@ namespace BATT
     void setupGPIO();
     void openDoor(uint8_t door);
     void doorTask(void *params);
+    void doorScanner(void *params);
     
 }
 
