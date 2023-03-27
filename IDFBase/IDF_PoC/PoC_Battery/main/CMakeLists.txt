@@ -1,0 +1,9 @@
+idf_component_register(SRCS "main.cpp"
+                            "src/Networking/BLE/BLEHandler.cpp"
+                            "src/Networking/WiFi/WiFi.cpp"
+                            "src/Commons/Commons.cpp"
+                            "src/Networking/WS/WS.cpp"
+                            "src/CANHandler.cpp"
+                            "src/Networking/MQTT/MQTT.cpp"
+                            "src/LEDHandler.cpp"
+                    INCLUDE_DIRS ".")
