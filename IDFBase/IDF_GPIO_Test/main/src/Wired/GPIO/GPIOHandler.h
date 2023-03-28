@@ -22,6 +22,10 @@ namespace BATT
     void openDoor(uint8_t door);
     void doorTask(void *params);
     void doorScanner(void *params);
+<<<<<<< HEAD
+=======
+    
+>>>>>>> poc_hub_connection_test
 }
 
 #endif

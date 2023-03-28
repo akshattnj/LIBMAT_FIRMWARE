@@ -12,6 +12,7 @@ extern "C" void app_main(void)
     xTaskCreate(LED::ledAnimationTask, "LED Animation", 4096, NULL, 10, NULL);
     xTaskCreate(BATT::doorTask, "Door", 2048, NULL, 10, NULL);
     xTaskCreate(BATT::doorScanner, "Door Scanner", 2048, NULL, 10, NULL);
+<<<<<<< HEAD
 
     // while (true)
     // {
@@ -45,4 +46,6 @@ extern "C" void app_main(void)
     //     Commons::animationSelection[3] = 2;
     //     vTaskDelay(10000 / portTICK_PERIOD_MS);
     // }
+=======
+>>>>>>> poc_hub_connection_test
 }

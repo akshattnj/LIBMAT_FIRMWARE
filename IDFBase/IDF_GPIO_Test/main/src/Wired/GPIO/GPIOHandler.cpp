@@ -49,8 +49,11 @@ namespace BATT
 
     void openDoor(uint8_t door)
     {
+        if(gpio_get_level(doors[door].sense) == 0)
+            return;
+        ESP_LOGI(GPIO_TAG, "Opening door %d", door);
         gpio_set_level(doors[door].lock, 1);
-        vTaskDelay(1000 / portTICK_PERIOD_MS);
+        vTaskDelay(500 / portTICK_PERIOD_MS);
         gpio_set_level(doors[door].lock, 0);
     }
 
@@ -59,35 +62,28 @@ namespace BATT
         while(1)
         {
             openDoor(2);
-            vTaskDelay(1000 / portTICK_PERIOD_MS);
+            openDoor(0);
+            vTaskDelay(2000 / portTICK_PERIOD_MS);
         }
+        
     }
 
     void doorScanner(void *params)
     {
         while(1)
         {
-            ESP_LOGI(GPIO_TAG, "Door 0: %d, Door 2: %d", gpio_get_level(doors[0].sense), gpio_get_level(doors[2].sense));
-            ESP_LOGI("DoorScanner", "Door 0: %d, Door 2: %d", gpio_get_level(doors[0].sense), gpio_get_level(doors[2].sense));
-            if(gpio_get_level(doors[0].sense) == 1)
-            {
+
+            if(gpio_get_level(doors[0].sense) == 0)
+                Commons::animationSelection[0] = 2;
+            else
                 Commons::animationSelection[0] = 1;
-                vTaskDelay(1000 / portTICK_PERIOD_MS);
-            }
+
+            if(gpio_get_level(doors[2].sense) == 0)
+                Commons::animationSelection[2] = 2;
             else
-            {
-                Commons::animationSelection[0] = 0x02;
-            }
-            if(gpio_get_level(doors[2].sense) == 1)
-            {
                 Commons::animationSelection[2] = 1;
-                vTaskDelay(1000 / portTICK_PERIOD_MS);
-            }
-            else
-            {
-                Commons::animationSelection[2] = 0x02;
-            }
-            vTaskDelay(100 / portTICK_PERIOD_MS);
+
+            vTaskDelay(10 / portTICK_PERIOD_MS);
         }
     }
 }
