@@ -5,13 +5,13 @@ namespace EC20
     typedef struct command
     {
         uint8_t command;
-        char data[150];
+        char data[BUFFER_LENGTH];
     } Command;
 
     int16_t incomingDataLen = 0;
     char incomingData[BUFFER_LENGTH];
     uint8_t flagsMQTT = 0x00; // {BIT0 : Server connect, BIT1 : Server error, BIT2 : MQTT connect, BIT3 : MQTT error, BIT4 : Send ready, BIT5 : Send success, BIT6 : Send error, BIT7 : reconnect}
-    uint8_t flagsEC20 = 0x00; // {BIT0 : GSM mode, BIT1 : LTE mode, BIT2 : GSM connect, BIT3 : LTE connect, BIT4 : Error, BIT5 : OK}
+    uint8_t flagsEC20 = 0x00; // {BIT0 : GSM mode, BIT1 : LTE mode, BIT2 : GSM connect, BIT3 : LTE connect, BIT4 : Error, BIT5 : OK, BIT6 : Valid Coordinates}
 
     double longitude;
     double latitude;
@@ -53,10 +53,16 @@ namespace EC20
             }
             if(esp_timer_get_time() - delayMQTT > 3000000)
             {
-                const char data[] = "{\'latitude\': 12.345, \'longitude\': 12.345}";
-                cmd.command = 0x02;
+                char buffer[100];
                 memset(cmd.data, 0, sizeof(cmd.data));
-                strncpy(cmd.data, data, strlen(data));
+                strcat(cmd.data, "{\'Hello\': \'Hi\'");
+                if(flagsEC20 & BIT6)
+                    sprintf(buffer, ",\'latitude\': %.4f, \'longitude\': %.4f}", latitude, longitude);
+                else
+                    sprintf(buffer, "}");
+                strcat(cmd.data, buffer);
+                cmd.command = 0x02;
+                ESP_LOGI(EC20_TAG, "Sending: %s", cmd.data);
                 xQueueSend(commandQueue, &cmd, 0);
                 delayMQTT = esp_timer_get_time();
             }
@@ -163,6 +169,7 @@ namespace EC20
         xSemaphoreTake(responseMQTT, portMAX_DELAY);
         memset(messageBuffer, 0, BUFFER_LENGTH);
         dataLen = sprintf(messageBuffer, "%s\r\n", data);
+        ESP_LOGI(EC20_TAG, "Sending: %s", messageBuffer);
         uart_write_bytes(EC20_PORT_NUM, messageBuffer, dataLen);
         xSemaphoreTake(responseMQTT, portMAX_DELAY);
         ESP_LOGI(EC20_TAG, "Message published");
@@ -178,6 +185,47 @@ namespace EC20
         sendATCommand(messageBuffer, dataLen, false);
         xSemaphoreTake(responseGPS, portMAX_DELAY);
         ESP_LOGI(EC20_TAG, "GPS data received");
+    }
+
+    void readGPSData(char *output)
+    {
+        char* ptr = strtok(output, ",");
+        uint8_t commaCount = 0;
+        while (ptr != NULL) 
+        {
+            commaCount++;
+            if (commaCount == 4) 
+            {
+                double latDegree = atoi(ptr) / 100;
+                double latMinute = atof(ptr + 2) / 60;
+                latitude = latDegree + latMinute;
+                if (latitude < -90 || latitude > 90) 
+                {
+                    ESP_LOGI(EC20_TAG, "Invalid latitude");
+                    flagsEC20 = flagsEC20 & (~BIT6);    
+                    return;
+                }
+            } 
+            else if (commaCount == 6) 
+            {
+                double lonDegree = atoi(ptr) / 100;
+                double lonMinute = atof(ptr + 3) / 60;
+                longitude = lonDegree + lonMinute;
+                if (longitude < -180 || longitude > 180) 
+                {
+                    ESP_LOGI(EC20_TAG, "Invalid longitude");
+                    flagsEC20 = flagsEC20 & (~BIT6);
+                    return;
+                }
+                flagsEC20 = flagsEC20 | BIT6;
+            }
+            ptr = strtok(NULL, ",");
+        }
+        if(longitude == 0.00 && latitude == 0.00)
+        {
+            ESP_LOGE(EC20_TAG, "Invalid GPS data");
+            flagsEC20 = flagsEC20 & (~BIT6);
+        }
     }
 
     /**
@@ -365,6 +413,7 @@ namespace EC20
                 if (output)
                 {
                     ESP_LOGI(EC20_TAG, "GPS Response: %s", output);
+                    readGPSData(output);
                     xSemaphoreGive(responseGPS);
                     goto chkEnd;
                 }
