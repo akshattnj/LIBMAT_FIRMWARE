@@ -1,0 +1,10 @@
+**/.vscode
+**/ArduinoOutput
+**/Secrets.h
+**/TestProj
+**/build
+**/Sandbox
+**/dependencies.lock
+**/managed_components
+**/sdkconfig.old
+TTGO_BSerial_Main/~$ErrorCodes.xlsx
