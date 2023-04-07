@@ -26,6 +26,7 @@ namespace Commons
     extern uint8_t wsFlags;
     extern uint8_t batteryPercentage;
     extern uint8_t animationSelection;
+    extern float batteryVoltage;
 
     extern SemaphoreHandle_t semaphoreCAN;
     extern QueueHandle_t queueCAN;

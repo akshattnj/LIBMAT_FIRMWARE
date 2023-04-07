@@ -37,20 +37,9 @@ namespace LED
             switch (Commons::animationSelection)
             {
             case 0:
-                if (Commons::batteryPercentage == 0)
+                if (Commons::batteryPercentage < 10)
                 {
-                    normalAnimation(0);
-                    vTaskDelay(250 / portTICK_PERIOD_MS);
-                    clear();
-                    vTaskDelay(100 / portTICK_PERIOD_MS);
-                    normalAnimation(0);
-                    vTaskDelay(250 / portTICK_PERIOD_MS);
-                    clear();
-                    vTaskDelay(100 / portTICK_PERIOD_MS);
-                    normalAnimation(0);
-                    vTaskDelay(250 / portTICK_PERIOD_MS);
-                    clear();
-                    vTaskDelay(3000 / portTICK_PERIOD_MS);
+                    lowBatteryAnimation();
                 }
                 else
                 {
@@ -70,11 +59,49 @@ namespace LED
                 swappingAnimation(true);
                 vTaskDelay(1000 / portTICK_PERIOD_MS);
                 break;
+            case 3:
+                noCanDataAnimation(false);
+                vTaskDelay(1000 / portTICK_PERIOD_MS);
+                noCanDataAnimation(true);
+                vTaskDelay(500 / portTICK_PERIOD_MS);
+                break;
             default:
                 vTaskDelay(100 / portTICK_PERIOD_MS);
                 break;
             }
         }
+    }
+
+    void lowBatteryAnimation()
+    {
+        normalAnimation(0);
+        vTaskDelay(250 / portTICK_PERIOD_MS);
+        clear();
+        vTaskDelay(100 / portTICK_PERIOD_MS);
+        normalAnimation(0);
+        vTaskDelay(250 / portTICK_PERIOD_MS);
+        clear();
+        vTaskDelay(100 / portTICK_PERIOD_MS);
+        normalAnimation(0);
+        vTaskDelay(250 / portTICK_PERIOD_MS);
+        clear();
+        vTaskDelay(3000 / portTICK_PERIOD_MS);
+    }
+
+    void noCanDataAnimation(bool blink)
+    {
+        if(blink)
+        {
+            clear();
+        }
+        else
+        {
+            for (int i = 0; i < NEOPIXEL_NUM; i++)
+            {
+                setPixel(i, 143, 0, 255);
+            }
+        }
+        ESP_ERROR_CHECK(strip->refresh(strip, 100));
     }
 
     void startupAnimation()
@@ -136,10 +163,7 @@ namespace LED
     {
         if (blink)
         {
-            for (int i = 0; i < NEOPIXEL_NUM; i++)
-            {
-                setPixel(i, 0, 0, 0);
-            }
+            clear();
         }
         else
         {

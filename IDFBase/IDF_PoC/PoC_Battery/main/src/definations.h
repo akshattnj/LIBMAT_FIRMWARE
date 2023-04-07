@@ -12,6 +12,13 @@
 #define DEVICE_ACCESS_ID "IFWSi8vM1HWhJFWtVLCn"
 #define MQTT_URI "mqtt://3.111.8.114:1883"
 
+// Telemetry Definations
+#define TELEMETRY_DOMAIN "3.111.8.114"
+#define TELEMETRY_PORT 1883
+#define TELEMETRY_USERNAME "ASDF"
+#define TELEMETRY_DEVICE_NAME "IFWSi8vM1HWhJFWtVLCn"
+#define TELEMETRY_TOPIC "v1/devices/me/telemetry"
+
 #define BLE_TAG "NimBLE"
 #define MAIN_TAG "Main"
 #define WIFI_TAG "WiFi"
@@ -33,5 +40,6 @@
 #define ID_DATA_RESP      0x0A3
 
 #define BMS_STATE_ID 0x18FF05D0
+#define BMS_VOLTAGE_ID 0x18FF01D0
 
 #endif

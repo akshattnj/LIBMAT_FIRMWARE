@@ -70,23 +70,28 @@ namespace BLE
         pAdvertising->start();
     }
 
-    void sendData(char *data, size_t len)
+    void sendData(char *data, uint8_t len)
     {
         if (pServer->getConnectedCount() == 0)
             return;
-            
-        pCharacteristic->setValue(data);
+
+        char buffer[len];
+        strncpy(buffer, data, len);
+
+        pCharacteristic->setValue((const uint8_t *)buffer, len);
         pCharacteristic->notify();
+        memset(buffer, 0, len);
     }
 
     void telemetryTask(void *params)
     {
+        size_t len;
         while (true)
         {
             char buffer[50];
             memset(buffer, 0, sizeof(buffer));
-            sprintf(buffer, "{\"ba%%\":%d}\n", Commons::batteryPercentage);
-            sendData(buffer);
+            len = sprintf(buffer, "{\"ba%%\":%d, \"baV\":%0.2f}\n", Commons::batteryPercentage, Commons::batteryVoltage);
+            sendData(buffer, len);
             vTaskDelay(1000 / portTICK_PERIOD_MS);
         }
     }

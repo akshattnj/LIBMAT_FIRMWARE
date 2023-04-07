@@ -8,7 +8,7 @@ namespace CANHandler
     gpio_num_t rxTWAI = GPIO_NUM_27;
 
     uint32_t identifierHeader = 0x0B0;
-    int64_t canTimeout = 0x00;
+    int64_t bmsTimeout = 0x00;
 
     typedef struct TWAITaskParameters{
         uint32_t expectedIdentifier;
@@ -44,39 +44,55 @@ namespace CANHandler
         while (1)
         {
             memset(&rxMessage, 0, sizeof(twai_message_t));
-            twai_receive(&rxMessage, portMAX_DELAY);
-            // ESP_LOGI(TWAI_TAG, "Received message with identifier: 0x%08x", rxMessage.identifier);
-            // if(rxMessage.data_length_code != 0)
-            // {
-            //     for(int i = 0; i < rxMessage.data_length_code; i++)
-            //         printf("0x%02x ", rxMessage.data[i]);
-            //     printf("\n");
-            // }
-            if(esp_timer_get_time() - canTimeout > 10000000)
+            if(twai_receive(&rxMessage, 1000 / portTICK_PERIOD_MS) == ESP_OK)
             {
-                Commons::batteryPercentage = 0;
+                
+                // ESP_LOGI(TWAI_TAG, "Received message with identifier: 0x%08x", rxMessage.identifier);
+                // if(rxMessage.data_length_code != 0)
+                // {
+                //     for(int i = 0; i < rxMessage.data_length_code; i++)
+                //         printf("0x%02x ", rxMessage.data[i]);
+                //     printf("\n");
+                // }
+
+                if(identifierHeader == 0x00)
+                {
+                    vTaskDelay(500 / portTICK_PERIOD_MS);
+                    continue;
+                }
+                if (rxMessage.identifier == (ID_MASTER_PING | identifierHeader))
+                {
+                    ESP_LOGI(TWAI_TAG, "Received master ping");
+                    parameters.expectedIdentifier = ID_PING_RESP;
+                    parameters.taskType = 0;
+                    xQueueSend(txTaskQueue, &parameters, portMAX_DELAY);
+                    continue;
+                }
+                if(rxMessage.identifier == BMS_STATE_ID)
+                {
+                    bmsTimeout = esp_timer_get_time();
+                    Commons::batteryPercentage = (uint8_t)((float)(rxMessage.data[0] << 8 | rxMessage.data[1]) * 0.01);
+                    ESP_LOGI(TWAI_TAG, "Got battery percent: %d", Commons::batteryPercentage);
+                    continue;
+                }
+                if (rxMessage.identifier == BMS_VOLTAGE_ID)
+                {
+                    uint32_t voltage = ((uint32_t)rxMessage.data[0] << 24) | ((uint32_t)rxMessage.data[1] << 16) | ((uint32_t)rxMessage.data[2] << 8) | rxMessage.data[3];
+                    Commons::batteryVoltage = (float)voltage * 0.001;
+                    ESP_LOGI(TWAI_TAG, "Got battery voltage: %.3f", Commons::batteryVoltage);
+                    continue;
+                }
+            }
+            else
+            {
+                if(esp_timer_get_time() - bmsTimeout > 10000000)
+                {
+                    Commons::batteryPercentage = 0;
+                    Commons::batteryVoltage = 0.00;
+                    Commons::animationSelection = 3;
+                }
             }
             
-            if(identifierHeader == 0x00)
-            {
-                vTaskDelay(500 / portTICK_PERIOD_MS);
-                continue;
-            }
-            if (rxMessage.identifier == (ID_MASTER_PING | identifierHeader))
-            {
-                ESP_LOGI(TWAI_TAG, "Received master ping");
-                parameters.expectedIdentifier = ID_PING_RESP;
-                parameters.taskType = 0;
-                xQueueSend(txTaskQueue, &parameters, portMAX_DELAY);
-                continue;
-            }
-            if(rxMessage.identifier == BMS_STATE_ID)
-            {
-                canTimeout = esp_timer_get_time();
-                Commons::batteryPercentage = (uint8_t)((float)(rxMessage.data[0] << 8 | rxMessage.data[1]) * 0.01);
-                ESP_LOGI(TWAI_TAG, "Got battery percent: %d", Commons::batteryPercentage);
-                continue;
-            }
         }
         vTaskDelete(NULL);
     }

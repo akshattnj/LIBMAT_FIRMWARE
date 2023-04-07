@@ -15,7 +15,7 @@
 namespace BLE
 {
     void initialiseBLE();
-    void sendData(char *data);
+    void sendData(char *data, uint8_t len);
     void telemetryTask(void *params);
 }
 

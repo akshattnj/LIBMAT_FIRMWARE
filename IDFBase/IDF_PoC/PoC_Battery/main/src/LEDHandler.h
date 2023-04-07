@@ -20,6 +20,8 @@ namespace LED
     void normalAnimation(uint8_t batteryPercentage);
     void chargingAnimation(uint8_t batteryPercentage, bool lastBlink);
     void swappingAnimation(bool blink);
+    void lowBatteryAnimation();
+    void noCanDataAnimation(bool blink);
 }
 
 #endif
