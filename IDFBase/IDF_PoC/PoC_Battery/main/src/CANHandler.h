@@ -1,8 +1,8 @@
 #ifndef CAN_HANDLER_H
 #define CAN_HANDLER_H
 
-#include "./Commons/Commons.h"
-#include "./definations.h"
+#include "src/Commons/Commons.h"
+#include "src/definations.h"
 
 extern "C"
 {

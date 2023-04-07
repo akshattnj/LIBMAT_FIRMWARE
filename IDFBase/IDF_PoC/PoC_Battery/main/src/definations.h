@@ -22,8 +22,8 @@
 // Telemetry Definations
 #define TELEMETRY_DOMAIN "3.111.8.114"
 #define TELEMETRY_PORT 1883
-#define TELEMETRY_USERNAME "ASDF"
-#define TELEMETRY_DEVICE_NAME "IFWSi8vM1HWhJFWtVLCn"
+#define TELEMETRY_USERNAME "IFWSi8vM1HWhJFWtVLCn"
+#define TELEMETRY_DEVICE_NAME "ASDF"
 #define TELEMETRY_TOPIC "v1/devices/me/telemetry"
 
 #define BLE_TAG "NimBLE"

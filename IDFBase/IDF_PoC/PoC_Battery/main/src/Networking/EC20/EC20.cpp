@@ -50,14 +50,11 @@ namespace EC20
             }
             if(esp_timer_get_time() - delayMQTT > 3000000)
             {
-                char buffer[100];
                 memset(cmd.data, 0, sizeof(cmd.data));
-                strcat(cmd.data, "{\'Hello\': \'Hi\'");
                 if(flagsEC20 & BIT6)
-                    sprintf(buffer, ",\'latitude\': %.4f, \'longitude\': %.4f}", Commons::latitude, Commons::longitude);
+                    sprintf(cmd.data, "{\"ba%%\":%d,\"baV\":%0.2f,\"lat\":%0.5f,\"lon\":%0.5f}", Commons::batteryPercentage, Commons::batteryVoltage, Commons::latitude, Commons::longitude);
                 else
-                    sprintf(buffer, "}");
-                strcat(cmd.data, buffer);
+                    sprintf(cmd.data, "{\"ba%%\":%d,\"baV\":%0.2f}", Commons::batteryPercentage, Commons::batteryVoltage);
                 cmd.command = 0x02;
                 ESP_LOGI(EC20_TAG, "Sending: %s", cmd.data);
                 xQueueSend(commandQueue, &cmd, 0);
