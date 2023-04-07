@@ -28,6 +28,8 @@ namespace LED
         }
         ESP_ERROR_CHECK(strip->clear(strip, 1000));
         startupAnimation();
+
+        xTaskCreate(ledAnimationTask, "LED Animation", 4096, NULL, 10, NULL);
     }
 
     void ledAnimationTask(void *pvParameter)

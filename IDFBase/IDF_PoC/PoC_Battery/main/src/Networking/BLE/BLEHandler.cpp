@@ -68,6 +68,8 @@ namespace BLE
 
         pAdvertising->setScanResponse(false);
         pAdvertising->start();
+
+        xTaskCreate(telemetryTask, "BLE Telemetry", 4096, NULL, 10, NULL);
     }
 
     void sendData(char *data, uint8_t len)

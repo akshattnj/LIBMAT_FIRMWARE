@@ -27,6 +27,8 @@ namespace Commons
     extern uint8_t batteryPercentage;
     extern uint8_t animationSelection;
     extern float batteryVoltage;
+    extern double longitude;
+    extern double latitude;
 
     extern SemaphoreHandle_t semaphoreCAN;
     extern QueueHandle_t queueCAN;

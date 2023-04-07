@@ -7,10 +7,17 @@
 
 #define WS_URI "ws://192.168.4.1/main"
 
-// MQTT Related stuff
-#define DEVICE_ID "21d930c0-baf1-11ed-b4d9-13b68cb12c7e"
-#define DEVICE_ACCESS_ID "IFWSi8vM1HWhJFWtVLCn"
-#define MQTT_URI "mqtt://3.111.8.114:1883"
+// EC20 Definations
+#define EC20_TXD 26
+#define EC20_RXD 25
+#define UART_RTS (UART_PIN_NO_CHANGE)
+#define UART_CTS (UART_PIN_NO_CHANGE)
+
+#define EC20_PORT_NUM (uart_port_t) 1
+#define EC20_BAUD_RATE 115200
+#define EC20_STACK_SIZE 4096
+
+#define BUFFER_LENGTH (1024)
 
 // Telemetry Definations
 #define TELEMETRY_DOMAIN "3.111.8.114"
@@ -26,6 +33,7 @@
 #define I2C_TAG "I2C"
 #define MQTT_TAG "MQTT"
 #define TWAI_TAG "TWAI"
+#define EC20_TAG "EC20"
 
 #define NEOPIXEL_PIN 16
 #define NEOPIXEL_NUM 5

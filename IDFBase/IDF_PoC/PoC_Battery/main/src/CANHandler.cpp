@@ -25,7 +25,17 @@ namespace CANHandler
         const twai_filter_config_t filterConfig = TWAI_FILTER_CONFIG_ACCEPT_ALL();
         const twai_general_config_t generalConfig = TWAI_GENERAL_CONFIG_DEFAULT(txTWAI, rxTWAI, TWAI_MODE_NORMAL);
         twai_reconfigure_alerts(TWAI_ALERT_ALL, NULL);
-        return twai_driver_install(&generalConfig, &timingConfig, &filterConfig);
+        esp_err_t errorCode = twai_driver_install(&generalConfig, &timingConfig, &filterConfig);
+        if(errorCode != ESP_OK)
+        {
+            ESP_LOGE(TWAI_TAG, "Error installing TWAI driver: %s", esp_err_to_name(errorCode));
+            return errorCode;
+        }
+
+        xTaskCreate(taskReceiveTWAI, "CAN Receive", 4096, NULL, 10, NULL);
+        xTaskCreate(taskSendTWAI, "CAN Send", 4096, NULL, 10, NULL);
+
+        return errorCode;
     }
 
     esp_err_t endTWAI()
@@ -41,6 +51,7 @@ namespace CANHandler
         TWAITaskParameters parameters;
         twai_message_t rxMessage;
         ESP_ERROR_CHECK(twai_start());
+
         while (1)
         {
             memset(&rxMessage, 0, sizeof(twai_message_t));

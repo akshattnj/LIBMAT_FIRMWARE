@@ -4,7 +4,6 @@ idf_component_register(SRCS "main.cpp"
                             "src/Commons/Commons.cpp"
                             "src/Networking/WS/WS.cpp"
                             "src/CANHandler.cpp"
-                            "src/Networking/MQTT/MQTT.cpp"
                             "src/LEDHandler.cpp"
                             "src/Networking/EC20/EC20.cpp"
-                    INCLUDE_DIRS ".")
+                    INCLUDE_DIRS "." "src")
