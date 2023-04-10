@@ -22,7 +22,7 @@ extern "C"
 
 namespace Commons 
 {
-    extern uint8_t WiFiFlags; // {BIT0 - Connect flag, BIT1 - connected flag, BIT2 - Stop scan, BIT3 - Net WiFi}
+    extern uint8_t WiFiFlags; // {BIT0 - Connect flag, BIT1 - connected flag, BIT2 - Stop scan bit}
     extern uint8_t wsFlags;
     extern uint8_t batteryPercentage;
     extern uint8_t animationSelection;

@@ -52,16 +52,8 @@ namespace WiFi
         {
             ip_event_got_ip_t *event = (ip_event_got_ip_t *)event_data;
             ESP_LOGI(WIFI_TAG, "Got IP:" IPSTR, IP2STR(&event->ip_info.ip));
-            Commons::WiFiFlags = (Commons::WiFiFlags | BIT1) & (~BIT0);
-            if ((Commons::WiFiFlags & BIT3) > 0)
-            {
-                Commons::WiFiFlags = (Commons::WiFiFlags) & (~BIT2);
-            }
-            else
-            {
-                Commons::WiFiFlags = (Commons::WiFiFlags | BIT2) & (~BIT3);
-                Commons::wsFlags = BIT0;
-            }
+            Commons::WiFiFlags = (Commons::WiFiFlags | BIT1 | BIT2) & (~BIT0);
+            Commons::wsFlags = BIT0;
             retryCount = 0;
         }
     }
@@ -85,6 +77,8 @@ namespace WiFi
         WiFiConnectQueue = xQueueCreate(2, sizeof(struct APData));
 
         ESP_LOGI(WIFI_TAG, "WiFi initial setup complete");
+
+        xTaskCreate(taskAutoConnect, "AutoConnect", 4096, NULL, 5, NULL);
     }
 
     void disconnectWiFi()
@@ -134,7 +128,7 @@ namespace WiFi
                     if (apNum > -1)
                     {
                         xQueueSend(WiFiConnectQueue, (void *)&(knownAPs[i]), 0);
-                        Commons::WiFiFlags = (Commons::WiFiFlags | BIT2) & (~BIT3);
+                        Commons::WiFiFlags = Commons::WiFiFlags | BIT2;
                         break;
                     }
                     ESP_LOGD(WIFI_TAG, "SSID \t\t%s", apInfo[i].ssid);
