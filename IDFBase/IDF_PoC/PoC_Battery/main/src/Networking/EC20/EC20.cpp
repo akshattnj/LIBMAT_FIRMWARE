@@ -1,4 +1,5 @@
 #include "EC20.h"
+#define MQTTDelay 60000000
 
 namespace EC20
 {
@@ -48,7 +49,7 @@ namespace EC20
                 xQueueSend(commandQueue, &cmd, 0);
                 delayGPS = esp_timer_get_time();
             }
-            if(esp_timer_get_time() - delayMQTT > 3000000)
+            if(esp_timer_get_time() - delayMQTT > MQTTDelay)
             {
                 memset(cmd.data, 0, sizeof(cmd.data));
                 if(flagsEC20 & BIT6)
