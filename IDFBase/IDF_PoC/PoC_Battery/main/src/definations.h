@@ -8,8 +8,8 @@
 #define WS_URI "ws://192.168.4.1/main"
 
 // EC20 Definations
-#define EC20_TXD 26
-#define EC20_RXD 25
+#define EC20_TXD 17
+#define EC20_RXD 16
 #define UART_RTS (UART_PIN_NO_CHANGE)
 #define UART_CTS (UART_PIN_NO_CHANGE)
 
@@ -23,8 +23,11 @@
 #define TELEMETRY_DOMAIN "3.111.8.114"
 #define TELEMETRY_PORT 1883
 #define TELEMETRY_USERNAME "IFWSi8vM1HWhJFWtVLCn"
-#define TELEMETRY_DEVICE_NAME "ASDF"
+#define TELEMETRY_DEVICE_NAME "ASDF1234"
 #define TELEMETRY_TOPIC "v1/devices/me/telemetry"
+
+#define TWAI_TX (gpio_num_t)26
+#define TWAI_RX (gpio_num_t)25
 
 #define BLE_TAG "NimBLE"
 #define MAIN_TAG "Main"
@@ -35,7 +38,7 @@
 #define TWAI_TAG "TWAI"
 #define EC20_TAG "EC20"
 
-#define NEOPIXEL_PIN 16
+#define NEOPIXEL_PIN 23
 #define NEOPIXEL_NUM 5
 
 #define ID_MASTER_PING      0x0B0
@@ -49,5 +52,7 @@
 
 #define BMS_STATE_ID 0x18FF05D0
 #define BMS_VOLTAGE_ID 0x18FF01D0
+
+#define MQTTDelay 30000000
 
 #endif

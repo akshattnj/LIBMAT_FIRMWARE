@@ -13,7 +13,7 @@
 #define MAIN_TAG "Main"
 #define TWAI_TAG "TWAI"
 
-#define TWAI_RX 27
+#define TWAI_RX 25
 #define TWAI_TX 26
 
 #define BMS_VOLTAGE_ID 0x18ff01d0

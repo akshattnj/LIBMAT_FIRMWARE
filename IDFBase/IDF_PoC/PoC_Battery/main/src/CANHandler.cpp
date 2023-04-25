@@ -4,8 +4,8 @@ namespace CANHandler
 {
     QueueHandle_t txTaskQueue;
 
-    gpio_num_t txTWAI = GPIO_NUM_26;
-    gpio_num_t rxTWAI = GPIO_NUM_27;
+    gpio_num_t txTWAI = TWAI_TX;
+    gpio_num_t rxTWAI = TWAI_RX;
 
     uint32_t identifierHeader = 0x0B0;
     int64_t bmsTimeout = 0x00;
@@ -58,13 +58,13 @@ namespace CANHandler
             if(twai_receive(&rxMessage, 1000 / portTICK_PERIOD_MS) == ESP_OK)
             {
                 
-                // ESP_LOGI(TWAI_TAG, "Received message with identifier: 0x%08x", rxMessage.identifier);
-                // if(rxMessage.data_length_code != 0)
-                // {
-                //     for(int i = 0; i < rxMessage.data_length_code; i++)
-                //         printf("0x%02x ", rxMessage.data[i]);
-                //     printf("\n");
-                // }
+                ESP_LOGI(TWAI_TAG, "Received message with identifier: 0x%08x", rxMessage.identifier);
+                if(rxMessage.data_length_code != 0)
+                {
+                    for(int i = 0; i < rxMessage.data_length_code; i++)
+                        printf("0x%02x ", rxMessage.data[i]);
+                    printf("\n");
+                }
 
                 if(identifierHeader == 0x00)
                 {

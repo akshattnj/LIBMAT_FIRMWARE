@@ -15,6 +15,7 @@ extern "C" void app_main(void)
 
     while (1)
     {
+        ledHandler.setAnimationSelection(0);
         ledHandler.setBatteryPercentage(100);
         vTaskDelay(4000 / portTICK_PERIOD_MS);
         ledHandler.setBatteryPercentage(50);

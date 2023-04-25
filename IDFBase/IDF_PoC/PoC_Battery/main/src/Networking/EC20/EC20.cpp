@@ -1,5 +1,4 @@
 #include "EC20.h"
-#define MQTTDelay 60000000
 
 namespace EC20
 {
@@ -49,7 +48,7 @@ namespace EC20
                 xQueueSend(commandQueue, &cmd, 0);
                 delayGPS = esp_timer_get_time();
             }
-            if(esp_timer_get_time() - delayMQTT > MQTTDelay)
+            if(esp_timer_get_time() - delayMQTT > MQTTDelay && ((flagsEC20 & BIT2) != 0))
             {
                 memset(cmd.data, 0, sizeof(cmd.data));
                 if(flagsEC20 & BIT6)
@@ -68,6 +67,7 @@ namespace EC20
     void commandRun(void *args)
     {
         Command cmd;
+        ESP_LOGI(EC20_TAG, "Started command runtime");
         while (1)
         {
             if (xQueueReceive(commandQueue, &cmd, portMAX_DELAY))
@@ -75,15 +75,18 @@ namespace EC20
                 switch (cmd.command)
                 {
                 case 0x01:
+                    ESP_LOGI(EC20_TAG, "Getting GPS data");
                     getGPSData();
                     break;
                 case 0x02:
+                    ESP_LOGI(EC20_TAG, "Attempting to publish data");
                     if(flagsMQTT & BIT2)
                         publishMQTT(cmd.data, strlen(cmd.data));
                     else
                         ESP_LOGI(EC20_TAG, "MQTT not connected");
                     break;
                 case 0x03:
+                    ESP_LOGI(EC20_TAG, "Reconnecting MQTT");
                     reconnectMQTT();
                     break;
                 default:
@@ -138,6 +141,8 @@ namespace EC20
     */
     void reconnectMQTT()
     {
+        flagsMQTT = flagsMQTT | BIT7;
+
         char messageBuffer[BUFFER_LENGTH];
         size_t dataLen = sprintf(messageBuffer, "+QMTOPEN=0,\"%s\",%d", TELEMETRY_DOMAIN, TELEMETRY_PORT);
         sendATCommand(messageBuffer, dataLen, true);
@@ -149,6 +154,8 @@ namespace EC20
         sendATCommand(messageBuffer, dataLen, true);
         xSemaphoreTake(responseMQTT, portMAX_DELAY);
         ESP_LOGI(EC20_TAG, "Thingsboard connected");
+
+        flagsMQTT = flagsMQTT & (~BIT7);
     }
 
     /**
@@ -458,6 +465,8 @@ namespace EC20
                     ESP_LOGE(EC20_TAG, "MQTT Connect Failed. Network reset needed.");
                     Command cmd = {.command = 0x03};
                     xQueueSend(commandQueue, &cmd, 0);
+                    if(flagsMQTT & BIT7)
+                        xSemaphoreGive(responseMQTT);
                 }
             chkEnd:
                 ESP_LOGI(EC20_TAG, "Got data: %s", incomingData);
