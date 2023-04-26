@@ -57,7 +57,7 @@ namespace CANHandler
             memset(&rxMessage, 0, sizeof(twai_message_t));
             if(twai_receive(&rxMessage, 1000 / portTICK_PERIOD_MS) == ESP_OK)
             {
-                
+                Commons::animationSelection = 0;
                 ESP_LOGI(TWAI_TAG, "Received message with identifier: 0x%08x", rxMessage.identifier);
                 if(rxMessage.data_length_code != 0)
                 {
@@ -84,6 +84,15 @@ namespace CANHandler
                     bmsTimeout = esp_timer_get_time();
                     Commons::batteryPercentage = (uint8_t)((float)(rxMessage.data[0] << 8 | rxMessage.data[1]) * 0.01);
                     ESP_LOGI(TWAI_TAG, "Got battery percent: %d", Commons::batteryPercentage);
+                    // WiFi scan only if CAN data is valid and battery is less then 40%
+                    if(Commons::batteryPercentage > 40.00 || Commons::animationSelection == 3)
+                    {
+                        Commons::WiFiFlags = Commons::WiFiFlags | BIT2; // Stop WiFi Scan
+                    }
+                    else
+                    {
+                        Commons::WiFiFlags = Commons::WiFiFlags & (~BIT2); // Start WiFi Scan
+                    }
                     continue;
                 }
                 if (rxMessage.identifier == BMS_VOLTAGE_ID)

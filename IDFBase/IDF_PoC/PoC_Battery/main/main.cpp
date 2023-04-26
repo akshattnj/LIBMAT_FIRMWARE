@@ -16,6 +16,17 @@ extern "C" void app_main(void)
     CANHandler::startTWAI();
     LED::init();
 
+    // Hardcode GPIO 19 to High
+    gpio_config_t tempConfig = {
+        .pin_bit_mask = GPIO_SEL_19,
+        .mode = GPIO_MODE_OUTPUT,
+        .pull_up_en = GPIO_PULLUP_DISABLE,
+        .pull_down_en = GPIO_PULLDOWN_DISABLE,
+        .intr_type = GPIO_INTR_DISABLE,
+    };
+    gpio_config(&tempConfig);
+    gpio_set_level(GPIO_NUM_19, 1);
+
     xTaskCreate(WS::wsClientTask, "WS Client", 2048, NULL, 10, NULL);
     xTaskCreate(EC20::commandControl, "Command Control", EC20_STACK_SIZE, NULL, 10, NULL);
 }

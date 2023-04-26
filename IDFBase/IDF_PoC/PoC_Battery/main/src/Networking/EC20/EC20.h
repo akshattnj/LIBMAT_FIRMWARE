@@ -24,6 +24,7 @@ namespace EC20
     bool waitForATResponse(uint32_t timeout);
     void initialiseMQTT();
     void reconnectMQTT();
+    bool waitForMQTT(uint32_t timeout = 5000 / portTICK_PERIOD_MS);
     void getGPSData();
     void readGPSData(char *output);
     void publishMQTT(char *data, size_t dataSize);
