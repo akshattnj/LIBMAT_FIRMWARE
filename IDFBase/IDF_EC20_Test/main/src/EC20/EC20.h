@@ -6,6 +6,7 @@
 #include <freertos/queue.h>
 #include <freertos/semphr.h>
 #include <driver/uart.h>
+#include <driver/gpio.h>
 #include <esp_err.h>
 #include <esp_log.h>
 #include <string.h>
@@ -25,7 +26,7 @@ namespace EC20
     void reconnectMQTT();
     void getGPSData();
     void readGPSData(char *output);
-    void publishMQTT(char *data, size_t dataSize);
+    void publishMQTT(char *data, size_t dataSize, char *topic);
 }
 
 #endif

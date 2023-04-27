@@ -19,6 +19,8 @@
 #define TELEMETRY_USERNAME "NHYWSw3xplNZCFjdtddz"
 #define TELEMETRY_DEVICE_NAME "615651"
 #define TELEMETRY_TOPIC "v1/devices/me/telemetry"
+#define RPC_TOPIC "v1/devices/me/rpc/request/+"
+#define RPC_RESPONSE_TOPIC "v1/devices/me/rpc/response/"
 
 
 #define MAIN_TAG "Main"

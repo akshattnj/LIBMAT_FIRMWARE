@@ -5,13 +5,14 @@ namespace EC20
     typedef struct command
     {
         uint8_t command;
+        uint16_t messageNum;
         char data[BUFFER_LENGTH];
     } Command;
 
     int16_t incomingDataLen = 0;
     char incomingData[BUFFER_LENGTH];
     uint8_t flagsMQTT = 0x00; // {BIT0 : Server connect, BIT1 : Server error, BIT2 : MQTT connect, BIT3 : MQTT error, BIT4 : Send ready, BIT5 : Send success, BIT6 : Send error, BIT7 : reconnect}
-    uint8_t flagsEC20 = 0x00; // {BIT0 : GSM mode, BIT1 : LTE mode, BIT2 : GSM connect, BIT3 : LTE connect, BIT4 : Error, BIT5 : OK, BIT6 : Valid Coordinates}
+    uint8_t flagsEC20 = 0x00; // {BIT0 : GSM mode, BIT1 : LTE mode, BIT2 : GSM connect, BIT3 : LTE connect, BIT4 : Error, BIT5 : OK, BIT6 : Valid Coordinates, BIT7 : GPIO Set}
 
     double longitude;
     double latitude;
@@ -45,18 +46,18 @@ namespace EC20
 
         while (1)
         {
-            if(esp_timer_get_time() - delayGPS > 500000)
+            if (esp_timer_get_time() - delayGPS > 500000)
             {
                 cmd.command = 0x01;
                 xQueueSend(commandQueue, &cmd, 0);
                 delayGPS = esp_timer_get_time();
             }
-            if(esp_timer_get_time() - delayMQTT > 3000000)
+            if (esp_timer_get_time() - delayMQTT > 30000000)
             {
                 char buffer[100];
                 memset(cmd.data, 0, sizeof(cmd.data));
                 strcat(cmd.data, "{\'Hello\': \'Hi\'");
-                if(flagsEC20 & BIT6)
+                if (flagsEC20 & BIT6)
                     sprintf(buffer, ",\'latitude\': %.4f, \'longitude\': %.4f}", latitude, longitude);
                 else
                     sprintf(buffer, "}");
@@ -83,14 +84,18 @@ namespace EC20
                     getGPSData();
                     break;
                 case 0x02:
-                    if(flagsMQTT & BIT2)
-                        publishMQTT(cmd.data, strlen(cmd.data));
+                    if (flagsMQTT & BIT2)
+                        publishMQTT(cmd.data, strlen(cmd.data), TELEMETRY_TOPIC);
                     else
                         ESP_LOGI(EC20_TAG, "MQTT not connected");
                     break;
                 case 0x03:
                     reconnectMQTT();
                     break;
+                case 0x04:
+                    char buffer[100];
+                    sprintf(buffer, "%s%d", RPC_RESPONSE_TOPIC, cmd.messageNum);
+                    publishMQTT(cmd.data, strlen(cmd.data), buffer);
                 default:
                     break;
                 }
@@ -106,6 +111,15 @@ namespace EC20
         ESP_ERROR_CHECK(uart_driver_install(EC20_PORT_NUM, BUFFER_LENGTH * 2, 0, 0, NULL, 0));
         ESP_ERROR_CHECK(uart_param_config(EC20_PORT_NUM, &portConfig));
         ESP_ERROR_CHECK(uart_set_pin(EC20_PORT_NUM, EC20_TXD, EC20_RXD, UART_RTS, UART_CTS));
+
+        gpio_config_t tempConfig = {
+            .pin_bit_mask = GPIO_SEL_19,
+            .mode = GPIO_MODE_OUTPUT,
+            .pull_up_en = GPIO_PULLUP_DISABLE,
+            .pull_down_en = GPIO_PULLDOWN_DISABLE,
+            .intr_type = GPIO_INTR_DISABLE,
+        };
+        gpio_config(&tempConfig);
 
         xTaskCreate(portListner, "UART Handler", EC20_STACK_SIZE, NULL, 15, NULL);
 
@@ -127,7 +141,7 @@ namespace EC20
 
     /**
      * @brief Set up initial paramteters for MQTT connection
-    */
+     */
     void initialiseMQTT()
     {
         sendATCommand("+QMTDISC=0", 10);
@@ -140,7 +154,7 @@ namespace EC20
 
     /**
      * @brief Connect to MQTT broker
-    */
+     */
     void reconnectMQTT()
     {
         char messageBuffer[BUFFER_LENGTH];
@@ -154,17 +168,23 @@ namespace EC20
         sendATCommand(messageBuffer, dataLen, true);
         xSemaphoreTake(responseMQTT, portMAX_DELAY);
         ESP_LOGI(EC20_TAG, "Thingsboard connected");
+
+        memset(messageBuffer, 0, BUFFER_LENGTH);
+        dataLen = sprintf(messageBuffer, "+QMTSUB=0,1,\"%s\",0", RPC_TOPIC);
+        sendATCommand(messageBuffer, dataLen, true);
+        xSemaphoreTake(responseMQTT, portMAX_DELAY);
+        ESP_LOGI(EC20_TAG, "Subscribed to Topic");
     }
 
     /**
      * @brief Publish data to MQTT broker
      * @param data Data to be published
      * @param dataSize Size of data
-    */
-    void publishMQTT(char *data, size_t dataSize)
+     */
+    void publishMQTT(char *data, size_t dataSize, char *topic)
     {
         char messageBuffer[BUFFER_LENGTH];
-        size_t dataLen = sprintf(messageBuffer, "AT+QMTPUBEX=0,0,0,0,\"%s\",%d\r\n", TELEMETRY_TOPIC, dataSize);
+        size_t dataLen = sprintf(messageBuffer, "AT+QMTPUBEX=0,0,0,0,\"%s\",%d\r\n", topic, dataSize);
         uart_write_bytes(EC20_PORT_NUM, messageBuffer, dataLen);
         xSemaphoreTake(responseMQTT, portMAX_DELAY);
         memset(messageBuffer, 0, BUFFER_LENGTH);
@@ -177,41 +197,41 @@ namespace EC20
 
     /**
      * @brief Get GPS data from EC20
-    */
+     */
     void getGPSData()
     {
         char messageBuffer[BUFFER_LENGTH];
         size_t dataLen = sprintf(messageBuffer, "+QGPSGNMEA=\"RMC\"");
         sendATCommand(messageBuffer, dataLen, false);
-        xSemaphoreTake(responseGPS, portMAX_DELAY);
+        xSemaphoreTake(responseGPS, 1000 / portTICK_PERIOD_MS);
         ESP_LOGI(EC20_TAG, "GPS data received");
     }
 
     void readGPSData(char *output)
     {
-        char* ptr = strtok(output, ",");
+        char *ptr = strtok(output, ",");
         uint8_t commaCount = 0;
-        while (ptr != NULL) 
+        while (ptr != NULL)
         {
             commaCount++;
-            if (commaCount == 4) 
+            if (commaCount == 4)
             {
                 double latDegree = atoi(ptr) / 100;
                 double latMinute = atof(ptr + 2) / 60;
                 latitude = latDegree + latMinute;
-                if (latitude < -90 || latitude > 90) 
+                if (latitude < -90 || latitude > 90)
                 {
                     ESP_LOGI(EC20_TAG, "Invalid latitude");
-                    flagsEC20 = flagsEC20 & (~BIT6);    
+                    flagsEC20 = flagsEC20 & (~BIT6);
                     return;
                 }
-            } 
-            else if (commaCount == 6) 
+            }
+            else if (commaCount == 6)
             {
                 double lonDegree = atoi(ptr) / 100;
                 double lonMinute = atof(ptr + 3) / 60;
                 longitude = lonDegree + lonMinute;
-                if (longitude < -180 || longitude > 180) 
+                if (longitude < -180 || longitude > 180)
                 {
                     ESP_LOGI(EC20_TAG, "Invalid longitude");
                     flagsEC20 = flagsEC20 & (~BIT6);
@@ -221,7 +241,7 @@ namespace EC20
             }
             ptr = strtok(NULL, ",");
         }
-        if(longitude == 0.00 && latitude == 0.00)
+        if (longitude == 0.00 && latitude == 0.00)
         {
             ESP_LOGE(EC20_TAG, "Invalid GPS data");
             flagsEC20 = flagsEC20 & (~BIT6);
@@ -234,7 +254,7 @@ namespace EC20
      * @param cmdLen Length of command
      * @param isCritical Is the command critical
      * @param timeout Timeout in ms
-    */
+     */
     bool sendATCommand(const char *command, size_t cmdLen, bool isCritical, uint32_t timeout)
     {
         char sendBuffer[cmdLen + 6];
@@ -260,7 +280,7 @@ namespace EC20
         }
         else
         {
-            for(int i = 0; i < 5; i++)
+            for (int i = 0; i < 5; i++)
             {
                 if (waitForATResponse(timeout))
                 {
@@ -279,24 +299,24 @@ namespace EC20
     /**
      * @brief Wait for response from EC20
      * @param timeout Timeout in ms
-     * 
+     *
      * The code does the following:
      * 1. Check that the semaphore is available. If not, block the task until the semaphore becomes available.
      * 2. If the semaphore is available, check if the BIT4 flag is set. If so, clear the flag and return false.
      * 3. If the semaphore is available, check if the BIT5 flag is set. If so, clear the flag and return true.
-     * 4. If the semaphore is available, but neither BIT4 or BIT5 are set, then the task was blocked for longer than the timeout, so return false. 
-    */
+     * 4. If the semaphore is available, but neither BIT4 or BIT5 are set, then the task was blocked for longer than the timeout, so return false.
+     */
     bool waitForATResponse(uint32_t timeout)
     {
         if (xSemaphoreTake(responseAT, timeout) == pdTRUE)
         {
-            if(flagsEC20 & BIT4)
+            if (flagsEC20 & BIT4)
             {
                 flagsEC20 = flagsEC20 & (~BIT4);
                 ESP_LOGE(EC20_TAG, "EC20 Error");
                 return false;
             }
-            else if(flagsEC20 & BIT5)
+            else if (flagsEC20 & BIT5)
             {
                 flagsEC20 = flagsEC20 & (~BIT5);
                 ESP_LOGI(EC20_TAG, "EC20 OK");
@@ -363,7 +383,7 @@ namespace EC20
 
     /**
      * @brief Task to listen to EC20 and set flags accordingly
-     * 
+     *
      * The code above does the following:
      *  1. If the current line is "OK", then set the flagsEC20 bit 5 and give the semaphore responseAT.
      *  2. If the current line is "ERROR", then set the bit 4 and give the semaphore responseAT.
@@ -374,10 +394,11 @@ namespace EC20
      *  7. If the current line is "+QMTCONN", then set the flagsMQTT bit 2 and clear the flagsMQTT bit 3 if the 12th character of the current line is 0 and set the flagsMQTT bit 3 and clear the flagsMQTT bit 2 if the 12th character of the current line is not 0.
      *  8. If the current line is ">", then set the flagsMQTT bit 4.
      *  9. If the current line is "+QMTPUBEX", then set the flagsMQTT bit 5 if the 15th character of the current line is 0 and set the flagsMQTT bit 1 and clear the flagsMQTT bit 0 if the 15th character of the current line is not 0.
-     *  10. If the current line is "+QMTSTAT", then set the flagsMQTT bit 1, flagsMQTT bit 3, clear the flagsMQTT bit 0, and clear the flagsMQTT bit 2. 
-    */
+     *  10. If the current line is "+QMTSTAT", then set the flagsMQTT bit 1, flagsMQTT bit 3, clear the flagsMQTT bit 0, and clear the flagsMQTT bit 2.
+     */
     void portListner(void *args)
     {
+        Command cmd;
         while (1)
         {
             incomingDataLen = uart_read_bytes(EC20_PORT_NUM, incomingData, (BUFFER_LENGTH - 1), 20 / portTICK_RATE_MS);
@@ -420,7 +441,7 @@ namespace EC20
                 output = strstr(incomingData, "+QMTOPEN:");
                 if (output)
                 {
-                    if (output[12] == '0') 
+                    if (output[12] == '0')
                         flagsMQTT = (flagsMQTT | BIT0) & (~BIT1);
                     else
                         flagsMQTT = (flagsMQTT & (~BIT0)) | BIT1;
@@ -456,12 +477,55 @@ namespace EC20
                     }
                     xSemaphoreGive(responseMQTT);
                 }
+
+                output = strstr(incomingData, "+QMTSUB");
+                if (output)
+                {
+                    if (incomingData[13] == '0')
+                        ESP_LOGI(EC20_TAG, "Subscribe Successful");
+                    else
+                        ESP_LOGI(EC20_TAG, "Subscribe failed");
+                    xSemaphoreGive(responseMQTT);
+                }
+
+                output = strstr(incomingData, "+QMTRECV");
+                if (output)
+                {
+                    char *requestNumString = strstr(output, "t/");
+                    cmd.messageNum = 0;
+                    uint8_t counter = 2;
+                    while (1)
+                    {
+                        if (requestNumString[counter] == '\"')
+                            break;
+                        cmd.messageNum = cmd.messageNum * 10 + (requestNumString[counter] - '0');
+                        counter++;
+                    }
+                    ESP_LOGI(EC20_TAG, "%d", cmd.messageNum);
+
+                    if (strstr(requestNumString, "getGpioStatus") != NULL)
+                    {
+                        sprintf(cmd.data, "{\"19\":%d}", (flagsEC20 & BIT7) > 0);
+                        cmd.command = 0x04;
+                        xQueueSend(commandQueue, &cmd, 0);
+                    }
+
+                    else if (strstr(requestNumString, "setGpioStatus") != NULL)
+                    {
+                        flagsEC20 = flagsEC20 ^ BIT7;
+                        gpio_set_level(GPIO_NUM_19, (flagsEC20 & BIT7) > 0);
+                        sprintf(cmd.data, "{\"19\":%d}", (flagsEC20 & BIT7) > 0);
+                        cmd.command = 0x04;
+                        xQueueSend(commandQueue, &cmd, 0);
+                    }
+                }
+
                 output = strstr(incomingData, "+QMTSTAT");
                 if (output)
                 {
                     flagsMQTT = (flagsMQTT | BIT1 | BIT3) & (~BIT0) & (~BIT2);
                     ESP_LOGE(EC20_TAG, "MQTT Connect Failed. Network reset needed.");
-                    Command cmd = {.command = 0x03};
+                    cmd.command = 0x03;
                     xQueueSend(commandQueue, &cmd, 0);
                 }
             chkEnd:
