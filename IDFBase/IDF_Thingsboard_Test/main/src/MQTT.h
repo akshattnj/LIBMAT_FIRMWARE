@@ -46,7 +46,8 @@ namespace MQTT
         cJSON_AddBoolToObject(root, "2", ((gpioFlags & BIT0) > 0));
         cJSON_AddBoolToObject(root, "4", ((gpioFlags & BIT1) > 0));
         cJSON_AddBoolToObject(root, "22", ((gpioFlags & BIT2) > 0));
-        cJSON_AddBoolToObject(root, "23", ((gpioFlags & BIT3) > 0));
+        cJSON_AddBoolToObject(root, "19", ((gpioFlags & BIT3) > 0));
+        
         data = cJSON_PrintUnformatted(root);
         ESP_LOGI(MQTT_TAG, "Data: %s", data);
         cJSON_Delete(root);
@@ -154,7 +155,7 @@ namespace MQTT
                         gpioFlags = gpioFlags & (~BIT2);
                     }
                 }
-                else if(tempPin == 23)
+                else if(tempPin == 19)
                 {
                     if(tempState)
                     {
@@ -197,7 +198,7 @@ namespace MQTT
         esp_mqtt_client_register_event(client, (esp_mqtt_event_id_t)ESP_EVENT_ANY_ID, mqttEventHandler, NULL);
 
         gpio_config_t gpioConfig = {};
-        gpioConfig.pin_bit_mask = GPIO_SEL_2 | GPIO_SEL_4 | GPIO_SEL_22 | GPIO_SEL_23;
+        gpioConfig.pin_bit_mask = GPIO_SEL_2 | GPIO_SEL_4 | GPIO_SEL_22 | GPIO_SEL_19;
         gpioConfig.mode = GPIO_MODE_OUTPUT;
         gpioConfig.pull_up_en = GPIO_PULLUP_DISABLE;
         gpioConfig.pull_down_en = GPIO_PULLDOWN_DISABLE;
