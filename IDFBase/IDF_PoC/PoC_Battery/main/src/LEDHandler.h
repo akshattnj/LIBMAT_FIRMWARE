@@ -8,6 +8,7 @@ extern "C"
 {
 #include <driver/rmt.h>
 #include <led_strip.h>
+extern xQueueHandle queueHandle;
 }
 
 namespace LED

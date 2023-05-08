@@ -34,9 +34,13 @@ namespace LED
 
     void ledAnimationTask(void *pvParameter)
     {
+        xQueueHandle queueHandle = (xQueueHandle)pvParameter;
         while (true)
         {
-            switch (Commons::animationSelection)
+            int animationSelection;
+            animationSelection=Commons::animationSelection;
+            if (xQueueReceive(queueHandle, &animationSelection, portMAX_DELAY) == pdTRUE)
+            switch (animationSelection)
             {
             case 0:
                 if (Commons::batteryPercentage < 10)
@@ -71,6 +75,8 @@ namespace LED
                 vTaskDelay(100 / portTICK_PERIOD_MS);
                 break;
             }
+            uint32_t message = 1234;
+            xQueueSend(queueHandle, &message, portMAX_DELAY);
         }
     }
 
