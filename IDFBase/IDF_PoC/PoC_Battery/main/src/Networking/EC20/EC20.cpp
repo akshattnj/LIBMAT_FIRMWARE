@@ -2,11 +2,13 @@
 
 namespace EC20
 {
-    typedef struct command
+     typedef struct command
     {
         uint8_t command;
+        uint16_t messageNum;
         char data[BUFFER_LENGTH];
     } Command;
+
 
     int16_t incomingDataLen = 0;
     char incomingData[BUFFER_LENGTH];
@@ -107,6 +109,15 @@ namespace EC20
 
         xTaskCreate(portListner, "UART Handler", EC20_STACK_SIZE, NULL, 15, NULL);
 
+        gpio_config_t tempConfig = {
+            .pin_bit_mask = GPIO_SEL_19,
+            .mode = GPIO_MODE_OUTPUT,
+            .pull_up_en = GPIO_PULLUP_DISABLE,
+            .pull_down_en = GPIO_PULLDOWN_DISABLE,
+            .intr_type = GPIO_INTR_DISABLE,
+        };
+        gpio_config(&tempConfig);
+
         sendATCommand("", 0);
         sendATCommand("V1", 2);
         sendATCommand("E0", 2);
@@ -157,6 +168,12 @@ namespace EC20
         if(!waitForMQTT(10000 / portTICK_PERIOD_MS))
             return;
         ESP_LOGI(EC20_TAG, "Thingsboard connected");
+
+        memset(messageBuffer, 0, BUFFER_LENGTH);
+        dataLen = sprintf(messageBuffer, "+QMTSUB=0,1,\"%s\",0", RPC_TOPIC);
+        sendATCommand(messageBuffer, dataLen, true);
+        xSemaphoreTake(responseMQTT, portMAX_DELAY);
+        ESP_LOGI(EC20_TAG, "Subscribed to Topic");
 
         flagsMQTT = flagsMQTT & (~BIT7);
     }
@@ -436,7 +453,7 @@ namespace EC20
                 output = strstr(incomingData, "+QMTOPEN:");
                 if (output)
                 {
-                    if (output[12] == '0') 
+                    if (output[12] == '0')
                         flagsMQTT = (flagsMQTT | BIT0) & (~BIT1);
                     else
                         flagsMQTT = (flagsMQTT & (~BIT0)) | BIT1;
@@ -472,6 +489,49 @@ namespace EC20
                     }
                     xSemaphoreGive(responseMQTT);
                 }
+
+                output = strstr(incomingData, "+QMTSUB");
+                if (output)
+                {
+                    if (incomingData[13] == '0')
+                        ESP_LOGI(EC20_TAG, "Subscribe Successful");
+                    else
+                        ESP_LOGI(EC20_TAG, "Subscribe failed");
+                    xSemaphoreGive(responseMQTT);
+                }
+
+                output = strstr(incomingData, "+QMTRECV");
+                if (output)
+                {
+                    char *requestNumString = strstr(output, "t/");
+                    Command cmd = {.messageNum = 0};
+                    uint8_t counter = 2;
+                    while (1)
+                    {
+                        if (requestNumString[counter] == '\"')
+                            break;
+                        cmd.messageNum = cmd.messageNum * 10 + (requestNumString[counter] - '0');
+                        counter++;
+                    }
+                    ESP_LOGI(EC20_TAG, "%d", cmd.messageNum);
+
+                    if (strstr(requestNumString, "getGpioStatus") != NULL)
+                    {
+                        sprintf(cmd.data, "{\"19\":%d}", (flagsEC20 & BIT7) > 0);
+                        cmd.command = 0x04;
+                        xQueueSend(commandQueue, &cmd, 0);
+                    }
+
+                    else if (strstr(requestNumString, "setGpioStatus") != NULL)
+                    {
+                        flagsEC20 = flagsEC20 ^ BIT7;
+                        gpio_set_level(GPIO_NUM_19, (flagsEC20 & BIT7) > 0);
+                        sprintf(cmd.data, "{\"19\":%d}", (flagsEC20 & BIT7) > 0);
+                        cmd.command = 0x04;
+                        xQueueSend(commandQueue, &cmd, 0);
+                    }
+                }
+
                 output = strstr(incomingData, "+QMTSTAT");
                 if (output)
                 {
@@ -479,8 +539,6 @@ namespace EC20
                     ESP_LOGE(EC20_TAG, "MQTT Connect Failed. Network reset needed.");
                     Command cmd = {.command = 0x03};
                     xQueueSend(commandQueue, &cmd, 0);
-                    if(flagsMQTT & BIT7)
-                        xSemaphoreGive(responseMQTT);
                 }
             chkEnd:
                 ESP_LOGI(EC20_TAG, "Got data: %s", incomingData);

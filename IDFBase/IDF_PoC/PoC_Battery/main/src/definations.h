@@ -25,6 +25,7 @@
 #define TELEMETRY_USERNAME "IFWSi8vM1HWhJFWtVLCn"
 #define TELEMETRY_DEVICE_NAME "ASDF1234"
 #define TELEMETRY_TOPIC "v1/devices/me/telemetry"
+#define RPC_TOPIC "v1/devices/me/rpc/request/+"
 
 #define TWAI_TX (gpio_num_t)26
 #define TWAI_RX (gpio_num_t)25
