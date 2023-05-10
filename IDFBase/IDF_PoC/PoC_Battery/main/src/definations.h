@@ -22,10 +22,11 @@
 // Telemetry Definations
 #define TELEMETRY_DOMAIN "3.111.8.114"
 #define TELEMETRY_PORT 1883
-#define TELEMETRY_USERNAME "IFWSi8vM1HWhJFWtVLCn"
+#define TELEMETRY_USERNAME "123abcd6969movio"
 #define TELEMETRY_DEVICE_NAME "ASDF1234"
 #define TELEMETRY_TOPIC "v1/devices/me/telemetry"
 #define RPC_TOPIC "v1/devices/me/rpc/request/+"
+#define RPC_RESPONSE_TOPIC "v1/devices/me/rpc/response/"
 
 #define TWAI_TX (gpio_num_t)26
 #define TWAI_RX (gpio_num_t)25
