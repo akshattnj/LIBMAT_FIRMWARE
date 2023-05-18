@@ -20,9 +20,9 @@
 #define BUFFER_LENGTH (1024)
 
 // Telemetry Definations
-#define TELEMETRY_DOMAIN "3.111.8.114"
+#define TELEMETRY_DOMAIN "122.180.246.214"
 #define TELEMETRY_PORT 1883
-#define TELEMETRY_USERNAME "123abcd6969movio"
+#define TELEMETRY_USERNAME "movio12346969"
 #define TELEMETRY_DEVICE_NAME "ASDF1234"
 #define TELEMETRY_TOPIC "v1/devices/me/telemetry"
 #define RPC_TOPIC "v1/devices/me/rpc/request/+"

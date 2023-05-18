@@ -165,8 +165,10 @@ namespace EC20
         memset(messageBuffer, 0, BUFFER_LENGTH);
         dataLen = sprintf(messageBuffer, "+QMTCONN=0,\"%s\",\"%s\"", TELEMETRY_DEVICE_NAME, TELEMETRY_USERNAME);
         sendATCommand(messageBuffer, dataLen, true);
-        if(!waitForMQTT(10000 / portTICK_PERIOD_MS))
-            return;
+        ESP_LOGI(EC20_TAG, "Connecting to Thingsboard");
+        if(!waitForMQTT(10000 / portTICK_PERIOD_MS)){
+            ESP_LOGI(EC20_TAG, "Thingsboard not connected");
+            return;}
         ESP_LOGI(EC20_TAG, "Thingsboard connected");
 
         memset(messageBuffer, 0, BUFFER_LENGTH);
@@ -188,11 +190,13 @@ namespace EC20
         char messageBuffer[BUFFER_LENGTH];
         size_t dataLen = sprintf(messageBuffer, "AT+QMTPUBEX=0,0,0,0,\"%s\",%d\r\n", TELEMETRY_TOPIC, dataSize);
         uart_write_bytes(EC20_PORT_NUM, messageBuffer, dataLen);
+        ESP_LOGI(EC20_TAG, "Waiting for response");
         xSemaphoreTake(responseMQTT, portMAX_DELAY);
         memset(messageBuffer, 0, BUFFER_LENGTH);
         dataLen = sprintf(messageBuffer, "%s\r\n", data);
         ESP_LOGI(EC20_TAG, "Sending: %s", messageBuffer);
         uart_write_bytes(EC20_PORT_NUM, messageBuffer, dataLen);
+        ESP_LOGI(EC20_TAG, "Waiting for response again");
         xSemaphoreTake(responseMQTT, portMAX_DELAY);
         ESP_LOGI(EC20_TAG, "Message published");
     }
@@ -386,10 +390,13 @@ namespace EC20
     bool waitForMQTT(uint32_t timeout)
     {
         if(xSemaphoreTake(responseMQTT, timeout) == pdTRUE)
+        {
+            ESP_LOGI(EC20_TAG, "MQTT response received");
             return true;
+        }
         else
         {
-            ESP_LOGE(EC20_TAG, "MQTT response timed out");
+            ESP_LOGI(EC20_TAG, "MQTT response timed out");
             return false;
         }
     }

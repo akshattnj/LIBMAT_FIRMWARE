@@ -16,8 +16,8 @@ extern "C"
 class I2CHandler
 {
 public:
-    double humidity;
     double temperature;
+
     I2CHandler(i2c_port_t portNum, int sdaPin, int sclPin, uint32_t clock) : portNum(portNum), sdaPin(sdaPin), sclPin(sclPin)
     {
         this->config.mode = I2C_MODE_MASTER;
@@ -30,7 +30,6 @@ public:
         return;
     }
 
-
     void setup()
     {
         vTaskDelay(100 / portTICK_PERIOD_MS); // I2C devices initialisation
@@ -40,11 +39,6 @@ public:
         this->setupAHT(AHT_ADDRESS);
     }
 
-    /**
-     * @brief Update data from connected I2C device. To be used inside task.
-     *
-     * @param args Task Parameters
-     */
     void updateI2C(void *args)
     {
         while (1)
@@ -69,33 +63,31 @@ public:
                     this->calculateTemperatureAndHumidity();
                 }
             }
+
+            for(int i = 0; i < 4; i++) {
+            }
+
             vTaskDelay(1000 / portTICK_PERIOD_MS);
         }
     }
 
 private:
-
+    // General I2C variables
     const i2c_port_t portNum;
     i2c_config_t config;
     const int sdaPin;
     const int sclPin;
     uint8_t ahtSensorStatus; // 7 - Free, 6 - Free, 5 - Free, 4 - Free, 3- Free, 2 - Free, 1 - Free, 0 - AHT ON
 
+    // I2C Communication Variables
     uint8_t readBufferAHT[AHT_READ_BUFFER];
     esp_err_t espError;
 
+    // AHT Variable
     const uint8_t AHTStatusCommand[1] = {0x71};
     const uint8_t AHTCalibrateCommand[3] = {0xBE, 0x08, 0x00};
     const uint8_t AHTMeasureCommand[3] = {0xAC, 0x33, 0x00};
     const double inv2Pow20 = 1.0 / 1048576.0;
-
-    const uint16_t MUX_BY_CHANNEL[4] = {
-        ADS1115_REG_CONFIG_MUX_SINGLE_0,
-        ADS1115_REG_CONFIG_MUX_SINGLE_1,
-        ADS1115_REG_CONFIG_MUX_SINGLE_2,
-        ADS1115_REG_CONFIG_MUX_SINGLE_3};
-    const double inv2Pow15 = 1.0 / 32768.0;
-    const double referenceVoltage = 4.096;
 
     bool readWriteI2C(uint8_t address, const uint8_t *toWrite, size_t writeSize, uint8_t* readBuffer, size_t readSize)
     {
@@ -108,6 +100,7 @@ private:
         return true;
     }
 
+
     bool readI2C(uint8_t address, uint8_t* readBuffer, size_t readSize)
     {
         this->espError = i2c_master_read_from_device(this->portNum, address, readBuffer, readSize, 100 / portTICK_PERIOD_MS);
@@ -118,6 +111,7 @@ private:
         }
         return true;
     }
+
     bool writeI2C(uint8_t address, const uint8_t *toWrite, size_t writeSize)
     {
         this->espError = i2c_master_write_to_device(this->portNum, address, toWrite, writeSize, 100 / portTICK_PERIOD_MS);
@@ -129,11 +123,6 @@ private:
         return true;
     }
 
-    /**
-     * @brief Initial setup for AHT21B
-     *
-     * @param address address of AHT21B
-     */
     void setupAHT(uint8_t address)
     {
         vTaskDelay(40 / portTICK_PERIOD_MS);
@@ -152,11 +141,6 @@ private:
         ESP_LOGI(I2C_TAG, "AHT21B Setup Complete Status %X", this->ahtSensorStatus);
     }
 
-    /**
-     * @brief Calculate temperature and humidity for the AHT21B sensor. Refer to documentation folder for details.
-     * Uses data stored in the readBufferAHT.
-     *
-     */
     void calculateTemperatureAndHumidity()
     {
         uint32_t humidityRaw = (this->readBufferAHT[1] << 12) | (this->readBufferAHT[2] << 4) | (this->readBufferAHT[3] >> 4);
@@ -165,6 +149,7 @@ private:
         this->temperature = (temperatureRaw * inv2Pow20 * 200) - 50;
         ESP_LOGI(I2C_TAG, "Got temperature %f and humidity %f\nDebug: %X %X", this->temperature, this->humidity, humidityRaw, temperatureRaw);
     }
+
 };
 
 #endif
