@@ -143,13 +143,26 @@ private:
 
     void calculateTemperatureAndHumidity()
     {
-        uint32_t humidityRaw = (this->readBufferAHT[1] << 12) | (this->readBufferAHT[2] << 4) | (this->readBufferAHT[3] >> 4);
+        //uint32_t humidityRaw = (this->readBufferAHT[1] << 12) | (this->readBufferAHT[2] << 4) | (this->readBufferAHT[3] >> 4);
         uint32_t temperatureRaw = ((this->readBufferAHT[3] & 0x0F) << 16) | (this->readBufferAHT[4] << 8) | (this->readBufferAHT[5]);
-        this->humidity = humidityRaw * inv2Pow20 * 100;
+        //this->humidity = humidityRaw * inv2Pow20 * 100;
         this->temperature = (temperatureRaw * inv2Pow20 * 200) - 50;
-        ESP_LOGI(I2C_TAG, "Got temperature %f and humidity %f\nDebug: %X %X", this->temperature, this->humidity, humidityRaw, temperatureRaw);
+        ESP_LOGI(I2C_TAG, "Got temperature %f", this->temperature);
     }
 
 };
 
+// extern "C" void task(void *ignore)
+// {
+//     i2c_config_t conf;
+//     conf.mode = I2C_MODE_MASTER;
+//     conf.sda_io_num = SDA_0_PIN;
+//     conf.scl_io_num = SCL_0_PIN;
+//     conf.sda_pullup_en = GPIO_PULLUP_ENABLE;
+//     conf.scl_pullup_en = GPIO_PULLUP_ENABLE;
+//     conf.master.clk_speed = 100000;
+//     i2c_param_config(I2C_NUM_0, &conf);
+
+//     i2c_driver_install(I2C_NUM_0, I2C_MODE_MASTER, 0, 0, 0);
+// }
 #endif

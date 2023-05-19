@@ -24,7 +24,7 @@ extern "C" void app_main(void)
 
 I2CHandler handleI2C(I2C_NUM_0, SDA_0_PIN, SCL_0_PIN, I2C_0_CLOCK);
 
-void app_main(void)
+extern "C" void app_main(void)
 {
     handleI2C.setup();
     xTaskCreate([](void *parameters)
