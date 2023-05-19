@@ -57,4 +57,19 @@
 
 #define MQTTDelay 30000000
 
+#define SDA_0_PIN 15
+#define SCL_0_PIN 2
+#define I2C_0_CLOCK 100000
+
+// AHT related definations
+#define AHT_ADDRESS 0x38
+
+#define AHT_ENABLED BIT0
+#define AHT_BUSY BIT7
+#define AHT_CALIB BIT3
+#define AHT_READ_BUFFER 10
+
+#define MAIN_TAG "MAIN"
+#define I2C_TAG "I2C"
+
 #endif

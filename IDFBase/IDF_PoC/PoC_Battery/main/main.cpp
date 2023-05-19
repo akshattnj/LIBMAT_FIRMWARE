@@ -6,6 +6,7 @@
 #include "src/Networking/WS/WS.h"
 #include "src/Networking/BLE/BLEHandler.h"
 #include "src/Networking/EC20/EC20.h"
+#include "src/i2cAHT/I2CHandler.h"
 
 
 extern "C" void app_main(void)
