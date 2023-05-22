@@ -1,6 +1,23 @@
-#include I2CHandler.h
+#include "I2CHandler.h"
 
-namespace AHT{
+namespace AHT
+{
+    const i2c_port_t portNum = I2C_NUM_0;
+    i2c_config_t config;
+    const int sdaPin = SDA_0_PIN;
+    const int sclPin = SCL_0_PIN;
+    uint8_t ahtSensorStatus; // 7 - Free, 6 - Free, 5 - Free, 4 - Free, 3- Free, 2 - Free, 1 - Free, 0 - AHT ON
+
+    const uint8_t AHTStatusCommand[1] = {0x71};
+    const uint8_t AHTCalibrateCommand[3] = {0xBE, 0x08, 0x00};
+    const uint8_t AHTMeasureCommand[3] = {0xAC, 0x33, 0x00};
+    const double inv2Pow20 = 1.0 / 1048576.0;
+    uint8_t readBufferAHT[AHT_READ_BUFFER];
+    esp_err_t espError;
+
+    float temperature;
+    float humidity;
+
     void setup()
     {
         vTaskDelay(100 / portTICK_PERIOD_MS); // I2C devices initialisation
@@ -8,8 +25,8 @@ namespace AHT{
         i2c_driver_install(portNum, I2C_MODE_MASTER, 0, 0, 0);
         ESP_LOGI(I2C_TAG, "I2C Initial Setup Complete");
         setupAHT(AHT_ADDRESS);
-        
     }
+
     void updateI2C(void *args)
     {
         while (1)
@@ -19,7 +36,7 @@ namespace AHT{
                 writeI2C(AHT_ADDRESS, AHTMeasureCommand, 3);
                 vTaskDelay(80 / portTICK_PERIOD_MS);
             checkStatusAHT:
-                
+
                 memset(readBufferAHT, 0, AHT_READ_BUFFER * sizeof(uint8_t));
                 readWriteI2C(AHT_ADDRESS, AHTStatusCommand, 1, readBufferAHT, 1);
                 if (readBufferAHT[0] & AHT_BUSY)
@@ -35,13 +52,10 @@ namespace AHT{
                 }
             }
 
-            for(int i = 0; i < 4; i++) {
-            }
-
             vTaskDelay(1000 / portTICK_PERIOD_MS);
         }
     }
-    bool readWriteI2C(uint8_t address, const uint8_t *toWrite, size_t writeSize, uint8_t* readBuffer, size_t readSize)
+    bool readWriteI2C(uint8_t address, const uint8_t *toWrite, size_t writeSize, uint8_t *readBuffer, size_t readSize)
     {
         espError = i2c_master_write_read_device(portNum, address, toWrite, writeSize, readBuffer, readSize, 100 / portTICK_PERIOD_MS);
         if (espError != ESP_OK)
@@ -51,7 +65,7 @@ namespace AHT{
         }
         return true;
     }
-    bool readI2C(uint8_t address, uint8_t* readBuffer, size_t readSize)
+    bool readI2C(uint8_t address, uint8_t *readBuffer, size_t readSize)
     {
         espError = i2c_master_read_from_device(portNum, address, readBuffer, readSize, 100 / portTICK_PERIOD_MS);
         if (espError != ESP_OK)
@@ -93,11 +107,11 @@ namespace AHT{
 
     void calculateTemperatureAndHumidity()
     {
-        //uint32_t humidityRaw = (readBufferAHT[1] << 12) | (readBufferAHT[2] << 4) | (readBufferAHT[3] >> 4);
+        uint32_t humidityRaw = (readBufferAHT[1] << 12) | (readBufferAHT[2] << 4) | (readBufferAHT[3] >> 4);
         uint32_t temperatureRaw = ((readBufferAHT[3] & 0x0F) << 16) | (readBufferAHT[4] << 8) | (readBufferAHT[5]);
-        //humidity = humidityRaw * inv2Pow20 * 100;
+        humidity = humidityRaw * inv2Pow20 * 100;
         temperature = (temperatureRaw * inv2Pow20 * 200) - 50;
-        ESP_LOGI(I2C_TAG, "Got temperature %f", temperature);
+        ESP_LOGI(I2C_TAG, "Got Temperature: %f, Humidity: %f", temperature, humidity);
     }
 }
 

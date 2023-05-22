@@ -39,6 +39,7 @@
 #define MQTT_TAG "MQTT"
 #define TWAI_TAG "TWAI"
 #define EC20_TAG "EC20"
+#define I2C_TAG "I2C"
 
 #define NEOPIXEL_PIN 23
 #define NEOPIXEL_NUM 5
@@ -69,7 +70,5 @@
 #define AHT_CALIB BIT3
 #define AHT_READ_BUFFER 10
 
-#define MAIN_TAG "MAIN"
-#define I2C_TAG "I2C"
 
 #endif
