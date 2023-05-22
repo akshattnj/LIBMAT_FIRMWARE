@@ -16,6 +16,7 @@ extern "C"
 
 
 namespace AHT{
+    //ERRORS HERE
     //general I2C variables
     const i2c_port_t portNum;
     i2c_config_t config;

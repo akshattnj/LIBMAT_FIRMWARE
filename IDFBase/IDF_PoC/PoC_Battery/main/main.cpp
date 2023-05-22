@@ -33,6 +33,8 @@ extern "C" void app_main(void)
     //********** I2C **********//
     I2CHandler handleI2C(I2C_NUM_0, SDA_0_PIN, SCL_0_PIN, I2C_0_CLOCK);
     AHT::setup();
+
+    //errors here
     xTaskCreate([](void *parameters)
                 { AHT::updateI2C(parameters); },
                 "I2C Updater", 2048, NULL, 12, NULL);
