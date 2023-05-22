@@ -8,7 +8,6 @@
 #include "src/Networking/EC20/EC20.h"
 #include "src/i2cAHT/I2CHandler.h"
 
-
 extern "C" void app_main(void)
 {
     Commons::startNVS();
@@ -30,4 +29,11 @@ extern "C" void app_main(void)
 
     xTaskCreate(WS::wsClientTask, "WS Client", 2048, NULL, 10, NULL);
     xTaskCreate(EC20::commandControl, "Command Control", EC20_STACK_SIZE, NULL, 10, NULL);
+
+    //********** I2C **********//
+    I2CHandler handleI2C(I2C_NUM_0, SDA_0_PIN, SCL_0_PIN, I2C_0_CLOCK);
+    AHT::setup();
+    xTaskCreate([](void *parameters)
+                { AHT::updateI2C(parameters); },
+                "I2C Updater", 2048, NULL, 12, NULL);
 }
