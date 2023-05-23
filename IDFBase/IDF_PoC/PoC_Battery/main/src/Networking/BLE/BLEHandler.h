@@ -9,6 +9,7 @@
 #include "src/definations.h"
 #include "NimBLEDevice.h"
 #include "NimBLELog.h"
+#include "src/i2cAHT/I2CHandler.h"
 
 #include <esp_log.h>
 

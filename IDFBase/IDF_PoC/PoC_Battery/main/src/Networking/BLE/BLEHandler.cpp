@@ -92,7 +92,7 @@ namespace BLE
         {
             char buffer[50];
             memset(buffer, 0, sizeof(buffer));
-            len = sprintf(buffer, "{\"ba%%\":%d, \"baV\":%0.2f}\n", Commons::batteryPercentage, Commons::batteryVoltage);
+            len = sprintf(buffer, "{\"ba%%\":%d, \"baV\":%0.2f, \"t\":%0.2f}\n", Commons::batteryPercentage, Commons::batteryVoltage, AHT::temperature);
             sendData(buffer, len);
             vTaskDelay(1000 / portTICK_PERIOD_MS);
         }

@@ -15,14 +15,21 @@ namespace AHT
     uint8_t readBufferAHT[AHT_READ_BUFFER];
     esp_err_t espError;
 
-    float temperature;
+    float temperature=40.000;
     float humidity;
 
     void setup()
     {
-        vTaskDelay(100 / portTICK_PERIOD_MS); // I2C devices initialisation
-        i2c_param_config(portNum, &config);
-        i2c_driver_install(portNum, I2C_MODE_MASTER, 0, 0, 0);
+        i2c_config_t conf;
+        conf.mode = I2C_MODE_MASTER;
+        conf.sda_io_num = SDA_0_PIN;
+        conf.scl_io_num = SCL_0_PIN;
+        conf.sda_pullup_en = GPIO_PULLUP_ENABLE;
+        conf.scl_pullup_en = GPIO_PULLUP_ENABLE;
+        conf.master.clk_speed = 100000;
+        i2c_param_config(I2C_NUM_0, &conf);
+
+    i2c_driver_install(I2C_NUM_0, I2C_MODE_MASTER, 0, 0, 0);
         ESP_LOGI(I2C_TAG, "I2C Initial Setup Complete");
         setupAHT(AHT_ADDRESS);
     }
@@ -111,7 +118,7 @@ namespace AHT
         uint32_t temperatureRaw = ((readBufferAHT[3] & 0x0F) << 16) | (readBufferAHT[4] << 8) | (readBufferAHT[5]);
         humidity = humidityRaw * inv2Pow20 * 100;
         temperature = (temperatureRaw * inv2Pow20 * 200) - 50;
-        ESP_LOGI(I2C_TAG, "Got Temperature: %f, Humidity: %f", temperature, humidity);
+        ESP_LOGI(I2C_TAG, "Got Temperature: .2%f, Humidity: %f", temperature, humidity);
     }
 }
 

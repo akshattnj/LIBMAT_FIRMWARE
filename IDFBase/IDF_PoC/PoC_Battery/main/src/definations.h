@@ -58,8 +58,8 @@
 
 #define MQTTDelay 30000000
 
-#define SDA_0_PIN 15
-#define SCL_0_PIN 2
+#define SDA_0_PIN 21
+#define SCL_0_PIN 22
 #define I2C_0_CLOCK 100000
 
 // AHT related definations
