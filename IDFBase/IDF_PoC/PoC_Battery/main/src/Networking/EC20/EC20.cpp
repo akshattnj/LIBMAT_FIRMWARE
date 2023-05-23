@@ -54,7 +54,7 @@ namespace EC20
             {
                 memset(cmd.data, 0, sizeof(cmd.data));
                 if(flagsEC20 & BIT6)
-                    sprintf(cmd.data, "{\"ba%%\":%d,\"baV\":%0.2f,\"lat\":%0.5f,\"lon\":%0.5f}", Commons::batteryPercentage, Commons::batteryVoltage, Commons::latitude, Commons::longitude);
+                    sprintf(cmd.data, "{\"ba%%\":%d,\"baV\":%0.2f,\"lat\":%0.5f,\"lon\":%0.5f, \"temp\":%0.2f, \"paani\":%0.2f}", Commons::batteryPercentage, Commons::batteryVoltage, Commons::latitude, Commons::longitude, AHT::temperature, AHT::humidity);
                 else
                     sprintf(cmd.data, "{\"ba%%\":%d,\"baV\":%0.2f}", Commons::batteryPercentage, Commons::batteryVoltage);
                 cmd.command = 0x02;

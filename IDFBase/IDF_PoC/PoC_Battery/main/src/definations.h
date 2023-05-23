@@ -17,7 +17,7 @@
 #define EC20_BAUD_RATE 115200
 #define EC20_STACK_SIZE 4096
 
-#define BUFFER_LENGTH (1024)
+#define BUFFER_LENGTH (2048)
 
 // Telemetry Definations
 #define TELEMETRY_DOMAIN "122.180.246.214"

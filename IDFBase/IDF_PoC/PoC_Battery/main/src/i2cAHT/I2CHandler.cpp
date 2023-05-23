@@ -15,7 +15,7 @@ namespace AHT
     uint8_t readBufferAHT[AHT_READ_BUFFER];
     esp_err_t espError;
 
-    float temperature=40.000;
+    float temperature=0.000;
     float humidity;
 
     void setup()
@@ -118,7 +118,7 @@ namespace AHT
         uint32_t temperatureRaw = ((readBufferAHT[3] & 0x0F) << 16) | (readBufferAHT[4] << 8) | (readBufferAHT[5]);
         humidity = humidityRaw * inv2Pow20 * 100;
         temperature = (temperatureRaw * inv2Pow20 * 200) - 50;
-        ESP_LOGI(I2C_TAG, "Got Temperature: .2%f, Humidity: %f", temperature, humidity);
+            printf("**************\nGot Temperature: %0.2f, Humidity: %0.2f\n******************", temperature, humidity);
     }
 }
 
