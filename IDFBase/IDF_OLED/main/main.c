@@ -4,7 +4,6 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "esp_log.h"
-
 #include "ssd1306.h"
 #include "font8x8_basic.h"
 
@@ -43,50 +42,27 @@ void app_main(void)
 #if CONFIG_FLIP
 	dev._flip = true;
 	ESP_LOGW(tag, "Flip upside down");
-#endif
-//********************************can be removed************************************************
+#endif // CONFIG_FLIP
+
 #if CONFIG_SSD1306_128x64
+	ssd1306_clear_screen(&dev, false);
+	ssd1306_contrast(&dev, 0xff);
 	ESP_LOGI(tag, "Panel is 128x64");
 	ssd1306_init(&dev, 128, 64);
 #endif // CONFIG_SSD1306_128x64
-//********************************************************************************
-#if CONFIG_SSD1306_128x32
-	ESP_LOGI(tag, "Panel is 128x32");
-	ssd1306_init(&dev, 128, 32);
-#endif // CONFIG_SSD1306_128x32
 
-	ssd1306_clear_screen(&dev, false);
-	ssd1306_contrast(&dev, 0xff);
-  	ssd1306_display_text_x3(&dev, 0, "Hello", 5, false);
- 	vTaskDelay(3000 / portTICK_PERIOD_MS);
 
-//********************************can be removed************************************************
+
 #if CONFIG_SSD1306_128x64
 	top = 2;
 	center = 3;
 	bottom = 8;
-	ssd1306_display_text(&dev, 0, "SSD1306 128x64", 14, false);
-	ssd1306_display_text(&dev, 1, "ABCDEFGHIJKLMNOP", 16, false);
-	ssd1306_display_text(&dev, 2, "abcdefghijklmnop",16, false);
-	ssd1306_display_text(&dev, 3, "Hello World!!", 13, false);
-	//ssd1306_clear_line(&dev, 4, true);
-	//ssd1306_clear_line(&dev, 5, true);
-	//ssd1306_clear_line(&dev, 6, true);
-	//ssd1306_clear_line(&dev, 7, true);
-	ssd1306_display_text(&dev, 4, "SSD1306 128x64", 14, true);
-	ssd1306_display_text(&dev, 5, "ABCDEFGHIJKLMNOP", 16, true);
-	ssd1306_display_text(&dev, 6, "abcdefghijklmnop",16, true);
-	ssd1306_display_text(&dev, 7, "Hello World!!", 13, true);
+	char text[20]="SoC=";
+	int value=40;
+	
+	ssd1306_clear_screen(&dev, false);
+	ssd1306_display_text_x3(&dev, 0, text+value, 5, false);
 #endif // CONFIG_SSD1306_128x64
-//********************************************************************************
-
-#if CONFIG_SSD1306_128x32
-	top = 1;
-	center = 1;
-	bottom = 4;
-	//void ssd1306_display_text(SSD1306_t * dev, int page, char * text, int text_len, bool invert);
-	ssd1306_display_text(&dev, 1, "Hello World!!", 13, false);
-#endif // CONFIG_SSD1306_128x32
 	vTaskDelay(3000 / portTICK_PERIOD_MS);
 
 #if 0

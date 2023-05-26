@@ -61,7 +61,7 @@
 #define SDA_0_PIN 21
 #define SCL_0_PIN 22
 #define I2C_0_CLOCK 100000
-
+    
 // AHT related definations
 #define AHT_ADDRESS 0x38
 

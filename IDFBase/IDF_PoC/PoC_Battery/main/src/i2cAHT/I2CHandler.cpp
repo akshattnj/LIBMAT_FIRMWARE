@@ -1,4 +1,5 @@
 #include "I2CHandler.h"
+#include "ssd1306.h"
 
 namespace AHT
 {
