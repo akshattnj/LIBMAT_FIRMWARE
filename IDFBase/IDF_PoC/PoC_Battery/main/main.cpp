@@ -29,30 +29,13 @@ extern "C" void app_main(void)
     };
     gpio_config(&tempConfig);
     gpio_set_level(GPIO_NUM_19, 1);
-
     xTaskCreate(WS::wsClientTask, "WS Client", 2048, NULL, 10, NULL);
     xTaskCreate(EC20::commandControl, "Command Control", EC20_STACK_SIZE, NULL, 10, NULL);
-    /*//oled display
-    SSD1306_t dev;
-	int center, top, bottom;
-	char lineChar[20];
-    ssd1306_init(&dev, 128, 64);
-    i2c_master_init(&dev, CONFIG_SDA_GPIO, CONFIG_SCL_GPIO, CONFIG_RESET_GPIO);
-    ssd1306_clear_screen(&dev, false);
-	ssd1306_contrast(&dev, 0xff);
-	top = 2;
-	center = 3;
-	bottom = 8;
-    char *line1 = "Hello World";
-    ssd1306_display_text(&dev, top, line1, 16, true);
-    ////////////////////////*/
     AHT::setup();
-    
     //errors here
     xTaskCreate(AHT::updateI2C, "I2C Updater", 2048, NULL, 12, NULL);
     xTaskCreate(OLEDTask, "OLED", 4096, NULL, 12, NULL);
 }
-
 void OLEDTask(void* pvParameters)
 {
     // Initialize OLED
@@ -63,7 +46,6 @@ void OLEDTask(void* pvParameters)
     ssd1306_init(&dev, 128, 64);
     ssd1306_clear_screen(&dev, false);
     ssd1306_contrast(&dev, 0xFF);
-
     top = 2;
     center = 3;
     bottom = 8;
@@ -78,9 +60,7 @@ void OLEDTask(void* pvParameters)
         ssd1306_clear_screen(&dev, false);
         ssd1306_display_text_x3(&dev, top, final, 16, false);
         vTaskDelay(1000 / portTICK_PERIOD_MS);
-
         // Additional OLED operations here
-
         vTaskDelay(1000 / portTICK_PERIOD_MS);
     }
 }

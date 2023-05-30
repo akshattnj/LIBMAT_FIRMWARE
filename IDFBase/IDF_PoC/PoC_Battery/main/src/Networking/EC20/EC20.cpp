@@ -61,7 +61,7 @@ namespace EC20
                 ESP_LOGI(EC20_TAG, "Sending: %s", cmd.data);
                 xQueueSend(commandQueue, &cmd, 0);
                 delayMQTT = esp_timer_get_time();
-            }
+            }                      
             vTaskDelay(100);
         }
     }
@@ -170,16 +170,13 @@ namespace EC20
             ESP_LOGI(EC20_TAG, "Thingsboard not connected");
             return;}
         ESP_LOGI(EC20_TAG, "Thingsboard connected");
-
         memset(messageBuffer, 0, BUFFER_LENGTH);
         dataLen = sprintf(messageBuffer, "+QMTSUB=0,1,\"%s\",0", RPC_TOPIC);
         sendATCommand(messageBuffer, dataLen, true);
         xSemaphoreTake(responseMQTT, portMAX_DELAY);
         ESP_LOGI(EC20_TAG, "Subscribed to Topic");
-
         flagsMQTT = flagsMQTT & (~BIT7);
     }
-
     /**
      * @brief Publish data to MQTT broker
      * @param data Data to be published
