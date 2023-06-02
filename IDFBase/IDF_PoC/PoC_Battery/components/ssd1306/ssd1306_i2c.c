@@ -8,12 +8,12 @@
 
 #include "ssd1306.h"
 
-#define tag "SSD1306"
+#define OledTag "SSD1306"
 
 //#define I2C_NUM I2C_NUM_0
 #define I2C_NUM I2C_NUM_1
 
-#define I2C_MASTER_FREQ_HZ 400000 /*!< I2C clock of SSD1306 can run at 400 kHz max. */
+#define I2C_MASTER_FREQ_HZ 100000 /*!< I2C clock of SSD1306 can run at 400 kHz max. */
 
 void i2c_master_init(SSD1306_t * dev, int16_t sda, int16_t scl, int16_t reset)
 {
@@ -26,9 +26,9 @@ void i2c_master_init(SSD1306_t * dev, int16_t sda, int16_t scl, int16_t reset)
 		.master.clk_speed = I2C_MASTER_FREQ_HZ
 	};
 	ESP_ERROR_CHECK(i2c_param_config(I2C_NUM, &i2c_config));
-	ESP_LOGI(tag, "I2C initialized");
+	ESP_LOGI(OledTag, "I2C initialized");
 	ESP_ERROR_CHECK(i2c_driver_install(I2C_NUM, I2C_MODE_MASTER, 0, 0, 0));
-	ESP_LOGI(tag, "I2C driver installed");
+	ESP_LOGI(OledTag, "I2C driver installed");
 
 	if (reset >= 0) {
 		//gpio_pad_select_gpio(reset);
@@ -97,9 +97,9 @@ void i2c_init(SSD1306_t * dev, int width, int height) {
 
 	esp_err_t espRc = i2c_master_cmd_begin(I2C_NUM, cmd, 10/portTICK_PERIOD_MS);
 	if (espRc == ESP_OK) {
-		ESP_LOGI(tag, "OLED configured successfully");
+		ESP_LOGI(OledTag, "OLED configured successfully");
 	} else {
-		ESP_LOGE(tag, "OLED configuration failed. code: 0x%.2X", espRc);
+		ESP_LOGE(OledTag, "OLED configuration failed. code: 0x%.2X", espRc);
 	}
 	i2c_cmd_link_delete(cmd);
 }
@@ -242,9 +242,9 @@ void i2c_hardware_scroll(SSD1306_t * dev, ssd1306_scroll_type_t scroll) {
 	i2c_master_stop(cmd);
 	espRc = i2c_master_cmd_begin(I2C_NUM, cmd, 10/portTICK_PERIOD_MS);
 	if (espRc == ESP_OK) {
-		ESP_LOGD(tag, "Scroll command succeeded");
+		ESP_LOGD(OledTag, "Scroll command succeeded");
 	} else {
-		ESP_LOGE(tag, "Scroll command failed. code: 0x%.2X", espRc);
+		ESP_LOGE(OledTag, "Scroll command failed. code: 0x%.2X", espRc);
 	}
 
 	i2c_cmd_link_delete(cmd);

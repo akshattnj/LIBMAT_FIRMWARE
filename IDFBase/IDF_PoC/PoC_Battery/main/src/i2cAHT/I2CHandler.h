@@ -3,6 +3,7 @@
 
 #include "definations.h"
 #include <string.h>
+#include <stdio.h>
 
 extern "C"
 {
@@ -25,6 +26,7 @@ namespace AHT
     bool writeI2C(uint8_t address, const uint8_t *toWrite, size_t writeSize);
     void setupAHT(uint8_t address);
     void calculateTemperatureAndHumidity();
+    void OLEDTask(void *pvParameters);
 
 }
 #endif
