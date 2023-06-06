@@ -15,33 +15,31 @@
 
 #define I2C_MASTER_FREQ_HZ 100000 /*!< I2C clock of SSD1306 can run at 400 kHz max. */
 
-void i2c_master_init(SSD1306_t * dev, int16_t sda, int16_t scl, int16_t reset)
+void i2c_master_init(SSD1306_t *dev, int16_t sda, int16_t scl, int16_t reset)
 {
-	i2c_config_t i2c_config = {
-		.mode = I2C_MODE_MASTER,
-		.sda_io_num = sda,
-		.scl_io_num = scl,
-		.sda_pullup_en = GPIO_PULLUP_ENABLE,
-		.scl_pullup_en = GPIO_PULLUP_ENABLE,
-		.master.clk_speed = I2C_MASTER_FREQ_HZ
-	};
-	ESP_ERROR_CHECK(i2c_param_config(I2C_NUM, &i2c_config));
-	ESP_LOGI(OledTag, "I2C initialized");
-	ESP_ERROR_CHECK(i2c_driver_install(I2C_NUM, I2C_MODE_MASTER, 0, 0, 0));
-	ESP_LOGI(OledTag, "I2C driver installed");
+    i2c_config_t i2c_config = {
+        .mode = I2C_MODE_MASTER,
+        .sda_io_num = sda,
+        .scl_io_num = scl,
+        .sda_pullup_en = GPIO_PULLUP_ENABLE,
+        .scl_pullup_en = GPIO_PULLUP_ENABLE,
+        .master.clk_speed = I2C_MASTER_FREQ_HZ
+    };
+    ESP_ERROR_CHECK(i2c_param_config(I2C_NUM, &i2c_config));
+    ESP_LOGI(OledTag, "I2C initialized");
+    ESP_ERROR_CHECK(i2c_driver_install(I2C_NUM, I2C_MODE_MASTER, 0, 0, 0));
+    ESP_LOGI(OledTag, "I2C driver installed");
 
-	if (reset >= 0) {
-		//gpio_pad_select_gpio(reset);
-		gpio_reset_pin(reset);
-		gpio_set_direction(reset, GPIO_MODE_OUTPUT);
-		gpio_set_level(reset, 0);
-		vTaskDelay(50 / portTICK_PERIOD_MS);
-		gpio_set_level(reset, 1);
-	}
-	dev->_address = I2CAddress;
-	dev->_flip = false;
+    if (reset >= 0) {
+        gpio_reset_pin(reset);
+        gpio_set_direction(reset, GPIO_MODE_OUTPUT);
+        gpio_set_level(reset, 0);
+        vTaskDelay(50 / portTICK_PERIOD_MS);
+        gpio_set_level(reset, 1);
+    }
+    dev->_address = I2CAddress;
+    dev->_flip = false;
 }
-
 
 
 void i2c_init(SSD1306_t * dev, int width, int height) {

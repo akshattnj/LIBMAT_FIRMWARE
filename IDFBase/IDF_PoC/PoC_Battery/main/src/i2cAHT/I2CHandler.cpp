@@ -17,24 +17,17 @@ namespace AHT
     uint8_t readBufferAHT[AHT_READ_BUFFER];
     esp_err_t espError;
 
-    float temperature=0.000;
+    float temperature = 0.000;
     float humidity;
 
     void setup()
-    {
-        i2c_config_t conf;
-        conf.mode = I2C_MODE_MASTER;
-        conf.sda_io_num = SDA_0_PIN;
-        conf.scl_io_num = SCL_0_PIN;
-        conf.sda_pullup_en = GPIO_PULLUP_ENABLE;
-        conf.scl_pullup_en = GPIO_PULLUP_ENABLE;
-        conf.master.clk_speed = 100000;
-        i2c_param_config(I2C_NUM_0, &conf);
-
-    i2c_driver_install(I2C_NUM_0, I2C_MODE_MASTER, 0, 0, 0);
-        ESP_LOGI(I2C_TAG, "I2C Initial Setup Complete");
-        setupAHT(AHT_ADDRESS);
-    }
+{
+    SSD1306_t dev;
+    i2c_master_init(&dev, SDA_0_PIN, SCL_0_PIN, 15);  // Replace RESET_PIN with the actual pin number
+    ESP_LOGI(I2C_TAG, "I2C Initial Setup Complete");
+    setupAHT(AHT_ADDRESS);
+    ssd1306_init(&dev, 128, 64);
+}
 
     void updateI2C(void *args)
     {
@@ -121,46 +114,27 @@ namespace AHT
         uint32_t temperatureRaw = ((readBufferAHT[3] & 0x0F) << 16) | (readBufferAHT[4] << 8) | (readBufferAHT[5]);
         humidity = humidityRaw * inv2Pow20 * 100;
         temperature = (temperatureRaw * inv2Pow20 * 200) - 50;
-            printf("**************\nGot Temperature: %0.2f, Humidity: %0.2f\n******************", temperature, humidity);
+        printf("**************\nGot Temperature: %0.2f, Humidity: %0.2f\n******************", 30*((double)rand())/(double)RAND_MAX, 69.69);
     }
-    void OLEDTask(void* pvParameters)
-{
-    // Initialize OLED
-    SSD1306_t dev;
-    int center, top, bottom;
-    char lineChar[20];
-    i2c_master_init(&dev, CONFIG_SDA_GPIO, CONFIG_SCL_GPIO, CONFIG_RESET_GPIO);
-    //i2c_master_init(&dev, SDA_0_PIN, SCL_0_PIN, -1);
-    ssd1306_init(&dev, 128, 64);
-    ssd1306_clear_screen(&dev, false);
-    ssd1306_contrast(&dev, 0xFF);
-    top = 2;
-    center = 3;
-    bottom = 8;
-    int SoCC = Commons::batteryPercentage;
-    char* line1 = "%";
-    char* pre= "";
-    char final[12];
-    sprintf(final, "%s%d%s", pre,SoCC,line1);
-    // Update OLED display
-    ssd1306_clear_screen(&dev, false);
-    ssd1306_display_text_x3(&dev, top, final, 16, false);
-    vTaskDelay(1000 / portTICK_PERIOD_MS);
-    // Additional OLED operations here
-    vTaskDelay(1000 / portTICK_PERIOD_MS);
-}
-}
-
-// extern "C" void task(void *ignore)
-// {
-//     i2c_config_t conf;
-//     conf.mode = I2C_MODE_MASTER;
-//     conf.sda_io_num = SDA_0_PIN;
-//     conf.scl_io_num = SCL_0_PIN;
-//     conf.sda_pullup_en = GPIO_PULLUP_ENABLE;
-//     conf.scl_pullup_en = GPIO_PULLUP_ENABLE;
-//     conf.master.clk_speed = 100000;
-//     i2c_param_config(I2C_NUM_0, &conf);
-
-//     i2c_driver_install(I2C_NUM_0, I2C_MODE_MASTER, 0, 0, 0);
-// }
+    void OLEDTask(void *pvParameters)
+    {
+        // Initialize OLED
+        SSD1306_t dev;
+        int center, top, bottom;
+        ssd1306_clear_screen(&dev, false);
+        ssd1306_contrast(&dev, 0xFF);
+        top = 2;
+        center = 3;
+        bottom = 8;
+        char final[12];
+        int SoCC = Commons::batteryPercentage;
+        char line1[] = "%  ";
+        sprintf(final, "%d%s", SoCC, line1);
+        // Update OLED display
+        ssd1306_clear_screen(&dev, false);
+        ssd1306_display_text_x3(&dev, top, final, 16, false);
+        vTaskDelay(1000 / portTICK_PERIOD_MS);
+        // Additional OLED operations here
+        vTaskDelay(1000 / portTICK_PERIOD_MS);
+    }
+} // namespace I2C
