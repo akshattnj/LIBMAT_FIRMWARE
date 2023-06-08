@@ -61,12 +61,21 @@ namespace I2C
 
             //ssd1306 related work
             char buffer[100];
-            size_t len = snprintf(buffer, 100, "SoC: %u%%", Commons::batteryPercentage);
-            ssd1306_clear_screen(ssdHandle, false);
-            ssd1306_draw_string(ssdHandle, 70, 16, (const uint8_t *)buffer, 16, 1);
-            ssd1306_refresh_gram(ssdHandle);
 
-            vTaskDelay(1000 / portTICK_PERIOD_MS);
+            if(Commons::animationSelection==3){
+                size_t len = snprintf(buffer, 100, "ERROR");
+                ssd1306_clear_screen(ssdHandle, false);
+                ssd1306_draw_string(ssdHandle, 70, 16, (const uint8_t *)buffer, 16, 1);
+                ssd1306_refresh_gram(ssdHandle);
+                vTaskDelay(1000 / portTICK_PERIOD_MS);
+            }
+            else{
+                size_t len = snprintf(buffer, 100, "SoC: %u%%", Commons::batteryPercentage);
+                ssd1306_clear_screen(ssdHandle, false);
+                ssd1306_draw_string(ssdHandle, 70, 16, (const uint8_t *)buffer, 16, 1);
+                ssd1306_refresh_gram(ssdHandle);
+                vTaskDelay(1000 / portTICK_PERIOD_MS);
+            }
         }
     }
     bool readWriteI2C(uint8_t address, const uint8_t *toWrite, size_t writeSize, uint8_t *readBuffer, size_t readSize)
