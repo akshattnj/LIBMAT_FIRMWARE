@@ -1,12 +1,9 @@
 #include "I2CHandler.h"
-#include "ssd1306.h"
 
-namespace AHT
+namespace I2C
 {
     const i2c_port_t portNum = I2C_NUM_0;
-    i2c_config_t config;
-    const int sdaPin = SDA_0_PIN;
-    const int sclPin = SCL_0_PIN;
+
     uint8_t ahtSensorStatus; // 7 - Free, 6 - Free, 5 - Free, 4 - Free, 3- Free, 2 - Free, 1 - Free, 0 - AHT ON
 
     const uint8_t AHTStatusCommand[1] = {0x71};
@@ -14,10 +11,8 @@ namespace AHT
     const uint8_t AHTMeasureCommand[3] = {0xAC, 0x33, 0x00};
     const double inv2Pow20 = 1.0 / 1048576.0;
     uint8_t readBufferAHT[AHT_READ_BUFFER];
+    ssd1306_handle_t ssdHandle = NULL;
     esp_err_t espError;
-
-    float temperature=0.000;
-    float humidity;
 
     void setup()
     {
@@ -27,18 +22,21 @@ namespace AHT
         conf.scl_io_num = SCL_0_PIN;
         conf.sda_pullup_en = GPIO_PULLUP_ENABLE;
         conf.scl_pullup_en = GPIO_PULLUP_ENABLE;
-        conf.master.clk_speed = 100000;
-        i2c_param_config(I2C_NUM_0, &conf);
+        conf.master.clk_speed = I2C_0_CLOCK;
+        i2c_param_config(portNum, &conf);
 
-    i2c_driver_install(I2C_NUM_0, I2C_MODE_MASTER, 0, 0, 0);
+        i2c_driver_install(portNum, I2C_MODE_MASTER, 0, 0, 0);
         ESP_LOGI(I2C_TAG, "I2C Initial Setup Complete");
+
         setupAHT(AHT_ADDRESS);
+        setupSSD();
     }
 
     void updateI2C(void *args)
     {
         while (1)
         {
+            // AHT related work
             if (ahtSensorStatus & AHT_ENABLED)
             {
                 writeI2C(AHT_ADDRESS, AHTMeasureCommand, 3);
@@ -59,6 +57,13 @@ namespace AHT
                     calculateTemperatureAndHumidity();
                 }
             }
+
+            //ssd1306 related work
+            char buffer[100];
+            size_t len = snprintf(buffer, 100, "SoC: %u%%", Commons::batteryPercentage);
+            ssd1306_clear_screen(ssdHandle, false);
+            ssd1306_draw_string(ssdHandle, 70, 16, (const uint8_t *)buffer, 16, 1);
+            ssd1306_refresh_gram(ssdHandle);
 
             vTaskDelay(1000 / portTICK_PERIOD_MS);
         }
@@ -113,26 +118,20 @@ namespace AHT
         ESP_LOGI(I2C_TAG, "AHT21B Setup Complete Status %X", ahtSensorStatus);
     }
 
+    void setupSSD()
+    {
+        ssdHandle = ssd1306_create(portNum, SSD1306_I2C_ADDRESS);
+        ssd1306_refresh_gram(ssdHandle);
+        ssd1306_clear_screen(ssdHandle, false);
+        ESP_LOGI(I2C_TAG, "SSD1306 setup complete");
+    }
+
     void calculateTemperatureAndHumidity()
     {
         uint32_t humidityRaw = (readBufferAHT[1] << 12) | (readBufferAHT[2] << 4) | (readBufferAHT[3] >> 4);
         uint32_t temperatureRaw = ((readBufferAHT[3] & 0x0F) << 16) | (readBufferAHT[4] << 8) | (readBufferAHT[5]);
-        humidity = humidityRaw * inv2Pow20 * 100;
-        temperature = (temperatureRaw * inv2Pow20 * 200) - 50;
-            printf("**************\nGot Temperature: %0.2f, Humidity: %0.2f\n******************", temperature, humidity);
+        Commons::humidity = humidityRaw * inv2Pow20 * 100;
+        Commons::temperature = (temperatureRaw * inv2Pow20 * 200) - 50;
+        ESP_LOGI(I2C_TAG, "Got Temperature: %0.2f, Humidity: %0.2f", Commons::temperature, Commons::humidity);
     }
-}
-
-extern "C" void task(void *ignore)
-{
-    i2c_config_t conf;
-    conf.mode = I2C_MODE_MASTER;
-    conf.sda_io_num = SDA_0_PIN;
-    conf.scl_io_num = SCL_0_PIN;
-    conf.sda_pullup_en = GPIO_PULLUP_ENABLE;
-    conf.scl_pullup_en = GPIO_PULLUP_ENABLE;
-    conf.master.clk_speed = 100000;
-    i2c_param_config(I2C_NUM_0, &conf);
-
-    i2c_driver_install(I2C_NUM_0, I2C_MODE_MASTER, 0, 0, 0);
 }

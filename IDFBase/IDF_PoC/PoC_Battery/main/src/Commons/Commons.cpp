@@ -9,6 +9,8 @@ namespace Commons
     float batteryVoltage = 0;
     double longitude = 0.00;
     double latitude = 0.00;
+    float temperature = 0.00;
+    float humidity = 0.00;
 
     SemaphoreHandle_t semaphoreCAN = xSemaphoreCreateBinary();
     QueueHandle_t queueCAN = xQueueCreate(1, sizeof(uint8_t));

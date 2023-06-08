@@ -6,10 +6,9 @@
 #include "src/Networking/WS/WS.h"
 #include "src/Networking/BLE/BLEHandler.h"
 #include "src/Networking/EC20/EC20.h"
-#include "src/i2cAHT/I2CHandler.h"
-#include "ssd1306.h"
+#include "src/I2CHandler/I2CHandler.h"
 
-void OLEDTask(void* pvParameters);
+// void OLEDTask(void* pvParameters);
 
 extern "C" void app_main(void)
 {
@@ -29,38 +28,40 @@ extern "C" void app_main(void)
     };
     gpio_config(&tempConfig);
     gpio_set_level(GPIO_NUM_19, 1);
+
     xTaskCreate(WS::wsClientTask, "WS Client", 2048, NULL, 10, NULL);
     xTaskCreate(EC20::commandControl, "Command Control", EC20_STACK_SIZE, NULL, 10, NULL);
-    AHT::setup();
+    I2C::setup();
     //errors here
-    xTaskCreate(AHT::updateI2C, "I2C Updater", 2048, NULL, 12, NULL);
-    xTaskCreate(OLEDTask, "OLED", 4096, NULL, 12, NULL);
+    xTaskCreate(I2C::updateI2C, "I2C Updater", 2048, NULL, 12, NULL);
+    // xTaskCreate(OLEDTask, "OLED", 4096, NULL, 12, NULL);
 }
-void OLEDTask(void* pvParameters)
-{
-    // Initialize OLED
-    SSD1306_t dev;
-    int center, top, bottom;
-    char lineChar[20];
-    i2c_master_init(&dev, CONFIG_SDA_GPIO, CONFIG_SCL_GPIO, CONFIG_RESET_GPIO);
-    ssd1306_init(&dev, 128, 64);
-    ssd1306_clear_screen(&dev, false);
-    ssd1306_contrast(&dev, 0xFF);
-    top = 2;
-    center = 3;
-    bottom = 8;
-    int SoCC = 100;
-    char* line1 = "%";
-    char* pre= "";
-    char final[12];
-    sprintf(final, "%s%d%s", pre,SoCC,line1);
-    while (true)
-    {
-        // Update OLED display
-        ssd1306_clear_screen(&dev, false);
-        ssd1306_display_text_x3(&dev, top, final, 16, false);
-        vTaskDelay(1000 / portTICK_PERIOD_MS);
-        // Additional OLED operations here
-        vTaskDelay(1000 / portTICK_PERIOD_MS);
-    }
-}
+
+// void OLEDTask(void* pvParameters)
+// {
+//     // Initialize OLED
+//     SSD1306_t dev;
+//     int center, top, bottom;
+//     char lineChar[20];
+//     i2c_master_init(&dev, CONFIG_SDA_GPIO, CONFIG_SCL_GPIO, CONFIG_RESET_GPIO);
+//     ssd1306_init(&dev, 128, 64);
+//     ssd1306_clear_screen(&dev, false);
+//     ssd1306_contrast(&dev, 0xFF);
+//     top = 2;
+//     center = 3;
+//     bottom = 8;
+//     int SoCC = 100;
+//     char* line1 = "%";
+//     char* pre= "";
+//     char final[12];
+//     sprintf(final, "%s%d%s", pre,SoCC,line1);
+//     while (true)
+//     {
+//         // Update OLED display
+//         ssd1306_clear_screen(&dev, false);
+//         ssd1306_display_text_x3(&dev, top, final, 16, false);
+//         vTaskDelay(1000 / portTICK_PERIOD_MS);
+//         // Additional OLED operations here
+//         vTaskDelay(1000 / portTICK_PERIOD_MS);
+//     }
+// }

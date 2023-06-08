@@ -58,13 +58,13 @@ namespace CANHandler
             if(twai_receive(&rxMessage, 1000 / portTICK_PERIOD_MS) == ESP_OK)
             {
                 Commons::animationSelection = 0;
-                ESP_LOGI(TWAI_TAG, "Received message with identifier: 0x%08x", rxMessage.identifier);
-                if(rxMessage.data_length_code != 0)
-                {
-                    for(int i = 0; i < rxMessage.data_length_code; i++)
-                        printf("0x%02x ", rxMessage.data[i]);
-                    printf("\n");
-                }
+                // ESP_LOGI(TWAI_TAG, "Received message with identifier: 0x%08x", rxMessage.identifier);
+                // if(rxMessage.data_length_code != 0)
+                // {
+                //     for(int i = 0; i < rxMessage.data_length_code; i++)
+                //         printf("0x%02x ", rxMessage.data[i]);
+                //     printf("\n");
+                // }
 
                 if(identifierHeader == 0x00)
                 {
@@ -97,6 +97,7 @@ namespace CANHandler
                 }
                 if (rxMessage.identifier == BMS_VOLTAGE_ID)
                 {
+                    bmsTimeout = esp_timer_get_time();
                     uint32_t voltage = ((uint32_t)rxMessage.data[0] << 24) | ((uint32_t)rxMessage.data[1] << 16) | ((uint32_t)rxMessage.data[2] << 8) | rxMessage.data[3];
                     Commons::batteryVoltage = (float)voltage * 0.001;
                     ESP_LOGI(TWAI_TAG, "Got battery voltage: %.3f", Commons::batteryVoltage);

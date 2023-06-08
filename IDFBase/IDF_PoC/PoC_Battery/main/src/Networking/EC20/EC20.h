@@ -3,7 +3,6 @@
 
 #include "src/definations.h"
 #include "src/Commons/Commons.h"
-#include "src/i2cAHT/I2CHandler.h"
 
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>

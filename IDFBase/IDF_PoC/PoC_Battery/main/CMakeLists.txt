@@ -6,5 +6,5 @@ idf_component_register(SRCS "main.cpp"
                             "src/CANHandler.cpp"
                             "src/LEDHandler.cpp"
                             "src/Networking/EC20/EC20.cpp"
-                            "src/i2cAHT/I2CHandler.cpp"
+                            "src/I2CHandler/I2CHandler.cpp"
                     INCLUDE_DIRS "." "src")

@@ -29,6 +29,8 @@ namespace Commons
     extern float batteryVoltage;
     extern double longitude;
     extern double latitude;
+    extern float temperature;
+    extern float humidity;
 
     extern SemaphoreHandle_t semaphoreCAN;
     extern QueueHandle_t queueCAN;
