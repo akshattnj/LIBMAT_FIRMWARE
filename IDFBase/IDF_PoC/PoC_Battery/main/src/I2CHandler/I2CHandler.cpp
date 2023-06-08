@@ -56,6 +56,7 @@ namespace I2C
                 {
                     calculateTemperatureAndHumidity();
                 }
+                // OLEDTask(NULL);
             }
 
             //ssd1306 related work
