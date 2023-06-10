@@ -74,6 +74,7 @@ namespace EC20
         {
             if (xQueueReceive(commandQueue, &cmd, portMAX_DELAY))
             {
+                ESP_LOGI(EC20_TAG, "Got command: %u, data: %s", cmd.command, cmd.data);
                 switch (cmd.command)
                 {
                 case 0x01:
@@ -82,14 +83,20 @@ namespace EC20
                     break;
                 case 0x02:
                     ESP_LOGI(EC20_TAG, "Attempting to publish data");
-                    if(flagsMQTT & BIT2)
+                    if((flagsMQTT & BIT2) > 0)
                         publishMQTT(cmd.data, strlen(cmd.data));
                     else
-                        ESP_LOGI(EC20_TAG, "MQTT not connected");
+                        ESP_LOGE(EC20_TAG, "MQTT not connected");
                     break;
                 case 0x03:
                     ESP_LOGI(EC20_TAG, "Reconnecting MQTT");
                     reconnectMQTT();
+                    break;
+                case 0x04:
+                    if((flagsMQTT & BIT2) > 0)
+                        responseRPC(cmd.messageNum, cmd.data, strlen(cmd.data));
+                    else
+                        ESP_LOGE(EC20_TAG, "MQTT not connected");
                     break;
                 default:
                     break;
@@ -186,6 +193,24 @@ namespace EC20
     {
         char messageBuffer[BUFFER_LENGTH];
         size_t dataLen = sprintf(messageBuffer, "AT+QMTPUBEX=0,0,0,0,\"%s\",%d\r\n", TELEMETRY_TOPIC, dataSize);
+        uart_write_bytes(EC20_PORT_NUM, messageBuffer, dataLen);
+        ESP_LOGI(EC20_TAG, "Waiting for response");
+        xSemaphoreTake(responseMQTT, portMAX_DELAY);
+        memset(messageBuffer, 0, BUFFER_LENGTH);
+        dataLen = sprintf(messageBuffer, "%s\r\n", data);
+        ESP_LOGI(EC20_TAG, "Sending: %s", messageBuffer);
+        uart_write_bytes(EC20_PORT_NUM, messageBuffer, dataLen);
+        ESP_LOGI(EC20_TAG, "Waiting for response again");
+        xSemaphoreTake(responseMQTT, portMAX_DELAY);
+        ESP_LOGI(EC20_TAG, "Message published");
+    }
+
+    void responseRPC(uint16_t messageId, char *data, size_t dataSize)
+    {
+        char topicBuffer[60];
+        char messageBuffer[BUFFER_LENGTH];
+        snprintf(topicBuffer, 60, "%s%d", RPC_RESPONSE_TOPIC, messageId);
+        size_t dataLen = sprintf(messageBuffer, "AT+QMTPUBEX=0,0,0,0,\"%s\",%d\r\n", topicBuffer, dataSize);
         uart_write_bytes(EC20_PORT_NUM, messageBuffer, dataLen);
         ESP_LOGI(EC20_TAG, "Waiting for response");
         xSemaphoreTake(responseMQTT, portMAX_DELAY);
@@ -517,11 +542,11 @@ namespace EC20
                         cmd.messageNum = cmd.messageNum * 10 + (requestNumString[counter] - '0');
                         counter++;
                     }
-                    ESP_LOGI(EC20_TAG, "%d", cmd.messageNum);
+                    ESP_LOGI(EC20_TAG, "Got request from Server: %d", cmd.messageNum);
 
                     if (strstr(requestNumString, "getGpioStatus") != NULL)
                     {
-                        sprintf(cmd.data, "{\"19\":%d}", (flagsEC20 & BIT7) > 0);
+                        snprintf(cmd.data, BUFFER_LENGTH, "{\"19\":%d}", (flagsEC20 & BIT7) > 0);
                         cmd.command = 0x04;
                         xQueueSend(commandQueue, &cmd, 0);
                     }
@@ -530,7 +555,7 @@ namespace EC20
                     {
                         flagsEC20 = flagsEC20 ^ BIT7;
                         gpio_set_level(GPIO_NUM_19, (flagsEC20 & BIT7) > 0);
-                        sprintf(cmd.data, "{\"19\":%d}", (flagsEC20 & BIT7) > 0);
+                        snprintf(cmd.data, BUFFER_LENGTH, "{\"19\":%d}", (flagsEC20 & BIT7) > 0);
                         cmd.command = 0x04;
                         xQueueSend(commandQueue, &cmd, 0);
                     }

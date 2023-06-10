@@ -30,6 +30,7 @@ namespace I2C
 
         setupAHT(AHT_ADDRESS);
         setupSSD();
+        xTaskCreate(updateI2C, "I2C Updater", 2048, NULL, 12, NULL);
     }
 
     void updateI2C(void *args)

@@ -29,5 +29,6 @@ namespace EC20
     void getGPSData();
     void readGPSData(char *output);
     void publishMQTT(char *data, size_t dataSize);
+    void responseRPC(uint16_t messageId, char *data, size_t dataSize);
 }
 #endif
