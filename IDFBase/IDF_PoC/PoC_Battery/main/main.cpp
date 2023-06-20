@@ -8,7 +8,16 @@
 #include "src/Networking/EC20/EC20.h"
 #include "src/I2CHandler/I2CHandler.h"
 
-// void OLEDTask(void* pvParameters);
+// Task that restarts the ESP every 2 minutes
+void restartTask(void* pvParameters)
+{
+    const TickType_t restartDelay = pdMS_TO_TICKS(2 * 60 * 1000);  // 2 minutes in milliseconds
+
+    while (true) {
+        vTaskDelay(restartDelay);
+        esp_restart();
+    }
+}
 
 extern "C" void app_main(void)
 {
@@ -32,4 +41,5 @@ extern "C" void app_main(void)
 
     xTaskCreate(WS::wsClientTask, "WS Client", 2048, NULL, 10, NULL);
     xTaskCreate(EC20::commandControl, "Command Control", EC20_STACK_SIZE, NULL, 10, NULL);
+    xTaskCreate(restartTask, "Restart Task", 2048, NULL, 5, NULL);
 }

@@ -22,7 +22,7 @@
 // Telemetry Definations
 #define TELEMETRY_DOMAIN "122.180.246.214"
 #define TELEMETRY_PORT 1883
-#define TELEMETRY_USERNAME "movio12346969"
+#define TELEMETRY_USERNAME "movio002"
 #define TELEMETRY_DEVICE_NAME "ASDF1234"
 #define TELEMETRY_TOPIC "v1/devices/me/telemetry"
 #define RPC_TOPIC "v1/devices/me/rpc/request/+"
