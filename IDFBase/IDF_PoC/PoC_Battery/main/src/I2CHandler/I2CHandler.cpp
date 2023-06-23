@@ -66,14 +66,14 @@ namespace I2C
             if(Commons::animationSelection==3){
                 size_t len = snprintf(buffer, 100, "ERROR");
                 ssd1306_clear_screen(ssdHandle, false);
-                ssd1306_draw_string(ssdHandle, 70, 16, (const uint8_t *)buffer, 16, 1);
+                ssd1306_draw_string(ssdHandle, 30, 30, (const uint8_t *)buffer, 16, 1);
                 ssd1306_refresh_gram(ssdHandle);
                 vTaskDelay(1000 / portTICK_PERIOD_MS);
             }
             else{
                 size_t len = snprintf(buffer, 100, "SoC: %u%%", Commons::batteryPercentage);
                 ssd1306_clear_screen(ssdHandle, false);
-                ssd1306_draw_string(ssdHandle, 70, 16, (const uint8_t *)buffer, 16, 1);
+                ssd1306_draw_string(ssdHandle, 30, 30, (const uint8_t *)buffer, 16, 1);
                 ssd1306_refresh_gram(ssdHandle);
                 vTaskDelay(1000 / portTICK_PERIOD_MS);
             }

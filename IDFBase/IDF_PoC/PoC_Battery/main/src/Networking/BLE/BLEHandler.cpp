@@ -90,9 +90,9 @@ namespace BLE
         size_t len;
         while (true)
         {
-            char buffer[50];
+            char buffer[100];
             memset(buffer, 0, sizeof(buffer));
-            len = sprintf(buffer, "{\"ba%%\":%d, \"baV\":%0.2f, \"t\":%0.2f, \"h\":%0.2f}\n", Commons::batteryPercentage, Commons::batteryVoltage, Commons::temperature, Commons::humidity);
+            len = sprintf(buffer, "{\"ba%%\":%d, \"baV\":%0.2f, \"t\":%0.2f, \"h\":%0.2f, \"BID\":%04d}\n", Commons::batteryPercentage, Commons::batteryVoltage, Commons::temperature, Commons::humidity, Commons::ID);
             sendData(buffer, len);
             vTaskDelay(1000 / portTICK_PERIOD_MS);
         }

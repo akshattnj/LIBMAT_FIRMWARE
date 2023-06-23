@@ -31,6 +31,7 @@ namespace Commons
     extern double latitude;
     extern float temperature;
     extern float humidity;
+    extern uint8_t ID;
 
     extern SemaphoreHandle_t semaphoreCAN;
     extern QueueHandle_t queueCAN;
