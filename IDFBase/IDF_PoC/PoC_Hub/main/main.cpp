@@ -9,7 +9,7 @@ extern "C"
 #include "src/BatteryHandler.h"
 #include "src/CANHandler.h"
 #include "src/LEDHandler.h"
-
+#include "src/Networking/EC20/EC20.h"
 extern "C" void app_main(void)
 {
     Commons::startNVS();
@@ -25,5 +25,6 @@ extern "C" void app_main(void)
     xTaskCreate(CANHandler::taskReceiveTWAI, "CAN receive", 4096, NULL, 10, NULL);
     xTaskCreate(CANHandler::taskSendTWAI, "CAN send", 4096, NULL, 10, NULL);
     xTaskCreate(CANHandler::taskControlTWAI, "CAN control", 4096, NULL, 10, NULL);
+    
     xTaskCreate(LED::ledAnimationTask, "LED Animation", 4096, NULL, 10, NULL);
 }
