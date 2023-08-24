@@ -18,6 +18,7 @@ extern "C"
 
 namespace I2C
 {
+    extern uint8_t chargingimg[];
     void setup();
     void updateI2C(void *args);
     

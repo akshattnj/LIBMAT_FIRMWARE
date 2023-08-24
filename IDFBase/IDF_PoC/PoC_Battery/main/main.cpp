@@ -38,7 +38,7 @@ extern "C" void app_main(void)
     };
     gpio_config(&tempConfig);
     gpio_set_level(GPIO_NUM_19, 1);
-
+    xTaskCreate(I2C::updateI2C, "I2C Update", 8192, NULL, 10, NULL);
     xTaskCreate(WS::wsClientTask, "WS Client", 2048, NULL, 10, NULL);
     xTaskCreate(EC20::commandControl, "Command Control", EC20_STACK_SIZE, NULL, 10, NULL);
     xTaskCreate(restartTask, "Restart Task", 2048, NULL, 5, NULL);

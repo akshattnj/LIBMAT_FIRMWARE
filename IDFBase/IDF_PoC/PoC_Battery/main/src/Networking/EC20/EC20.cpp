@@ -54,9 +54,9 @@ namespace EC20
             {
                 memset(cmd.data, 0, sizeof(cmd.data));
                 if(flagsEC20 & BIT6)
-                    sprintf(cmd.data, "{\"ba%%\":%d,\"baV\":%0.2f,\"lat\":%0.5f,\"lon\":%0.5f, \"temp\":%0.2f, \"humidity\":%0.2f}", Commons::batteryPercentage, Commons::batteryVoltage, Commons::latitude, Commons::longitude, Commons::temperature, Commons::humidity);
+                    sprintf(cmd.data, "{\"B_SoC%%\":%d,\"B_V\":%0.2f,\"B_lat\":%0.5f,\"B_lon\":%0.5f, \"B_temp\":%0.2f, \"B_hum\":%0.2f}", Commons::batteryPercentage, Commons::batteryVoltage, Commons::latitude, Commons::longitude, Commons::temperature, Commons::humidity);
                 else
-                    sprintf(cmd.data, "{\"ba%%\":%d,\"baV\":%0.2f, \"temp\":%0.2f, \"humidity\":%0.2f}", Commons::batteryPercentage, Commons::batteryVoltage, Commons::temperature, Commons::humidity);
+                    sprintf(cmd.data, "{\"B_SoC%%\":%d,\"B_V\":%0.2f, \"B_temp\":%0.2f, \"B_hum\":%0.2f}", Commons::batteryPercentage, Commons::batteryVoltage, Commons::temperature, Commons::humidity);
                 cmd.command = 0x02;
                 ESP_LOGI(EC20_TAG, "Sending: %s", cmd.data);
                 xQueueSend(commandQueue, &cmd, 0);
